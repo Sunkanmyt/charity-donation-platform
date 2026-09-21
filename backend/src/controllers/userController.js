@@ -160,7 +160,7 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, phone,email } = req.body;
+    const { firstName, lastName, phone, email } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -182,8 +182,8 @@ const updateProfile = async (req, res) => {
       user.phone = phone;
     }
 
-    if(email !== undefined){
-      user.email = email
+    if (email !== undefined) {
+      user.email = email;
     }
     await user.save();
 
@@ -202,7 +202,7 @@ const updateProfile = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message:"Failed to update profile",
+      message: "Failed to update profile",
     });
   }
 };
@@ -234,10 +234,7 @@ const changePassword = async (req, res) => {
       });
     }
 
-    const passwordMatch = await bcrypt.compare(
-      currentPassword,
-      user.password
-    );
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!passwordMatch) {
       return res.status(401).json({
