@@ -90,7 +90,7 @@ const getCampaignDonations = async (req, res) => {
     // TODO: after real auth is merged, allow only admin or the campaign creator
 
     const donations = await Donation.find({ campaign: campaignId })
-      .populate("donor", "name")
+      .populate("donor", "firstName lastName")
       .sort({ createdAt: -1 });
 
     // Hide donor identity on anonymous donations
