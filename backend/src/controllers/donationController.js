@@ -9,20 +9,52 @@ const createDonation = async (req, res) => {
     const { campaignId, amount, isAnonymous, message } = req.body;
 
     if (!campaignId || !mongoose.Types.ObjectId.isValid(campaignId)) {
-      return res.status(400).json({ success: false, message: "A valid campaign ID is required", data: null });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "A valid campaign ID is required",
+          data: null,
+        });
     }
 
     const numAmount = Number(amount);
-    if (!Number.isFinite(numAmount) || numAmount <= 0) {
-      return res.status(400).json({ success: false, message: "Amount must be greater than 0", data: null });
+    if (!Number.isFinite(numAmount) || numAmount < 1) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Amount must be at least 1",
+          data: null,
+        });
+    }
+    if (
+      message !== undefined &&
+      (typeof message !== "string" || message.length > 300)
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Message must be text of 300 characters or fewer",
+          data: null,
+        });
     }
 
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
-      return res.status(404).json({ success: false, message: "Campaign not found", data: null });
+      return res
+        .status(404)
+        .json({ success: false, message: "Campaign not found", data: null });
     }
     if (campaign.status !== "active") {
-      return res.status(400).json({ success: false, message: "This campaign is not accepting donations", data: null });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "This campaign is not accepting donations",
+          data: null,
+        });
     }
 
     // Payment is simulated, so the donation is recorded as successful
@@ -35,12 +67,18 @@ const createDonation = async (req, res) => {
       status: "successful",
     });
 
-    await Campaign.findByIdAndUpdate(campaignId, { $inc: { raisedAmount: numAmount } });
+    await Campaign.findByIdAndUpdate(campaignId, {
+      $inc: { raisedAmount: numAmount },
+    });
 
-    return res.status(201).json({ success: true, message: "Donation successful", data: donation });
+    return res
+      .status(201)
+      .json({ success: true, message: "Donation successful", data: donation });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: "Something went wrong", data: null });
+    return res
+      .status(500)
+      .json({ success: false, message: "Something went wrong", data: null });
   }
 };
 
@@ -68,10 +106,11 @@ const getMyDonations = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: "Something went wrong", data: null });
+    return res
+      .status(500)
+      .json({ success: false, message: "Something went wrong", data: null });
   }
 };
-
 
 // GET /api/donations/campaign/:campaignId  (admin or campaign creator)
 const getCampaignDonations = async (req, res) => {
@@ -79,12 +118,16 @@ const getCampaignDonations = async (req, res) => {
     const { campaignId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(campaignId)) {
-      return res.status(400).json({ success: false, message: "Invalid campaign ID", data: null });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid campaign ID", data: null });
     }
 
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
-      return res.status(404).json({ success: false, message: "Campaign not found", data: null });
+      return res
+        .status(404)
+        .json({ success: false, message: "Campaign not found", data: null });
     }
 
     // TODO: after real auth is merged, allow only admin or the campaign creator
@@ -100,10 +143,18 @@ const getCampaignDonations = async (req, res) => {
       return obj;
     });
 
-    return res.status(200).json({ success: true, message: "Campaign donations retrieved", data: result });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Campaign donations retrieved",
+        data: result,
+      });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ success: false, message: "Something went wrong", data: null });
+    return res
+      .status(500)
+      .json({ success: false, message: "Something went wrong", data: null });
   }
 };
 
