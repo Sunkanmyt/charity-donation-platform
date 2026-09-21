@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectToDB = require("./config/dbConfig");
+const donationRoutes = require("./routes/donationRoutes");
 
 const app = express();
 
@@ -21,6 +22,8 @@ app.use(
 
 // Setting up middleware to parse JSON request bodies
 app.use(express.json());
+
+app.use("/api/donations", donationRoutes);
 
 app.listen(process.env.PORT, () => {
   console.log(`The server is running on ${process.env.PORT}`);
