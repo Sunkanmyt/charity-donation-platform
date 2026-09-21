@@ -160,7 +160,7 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, phone } = req.body;
+    const { firstName, lastName, phone, email, password } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -182,6 +182,12 @@ const updateProfile = async (req, res) => {
       user.phone = phone;
     }
 
+    if(email !== undefined){
+      user.email = email
+    }
+    if(password !== undefined){
+      user.password = password
+    }
     await user.save();
 
     return res.status(200).json({
