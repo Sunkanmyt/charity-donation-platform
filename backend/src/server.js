@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const connectToDB = require("./config/dbConfig");
 const donationRoutes = require("./routes/donationRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(
 app.use(express.json());
 
 app.use("/api/donations", donationRoutes);
+app.use("/api/users", userRoutes);
 
 app.listen(process.env.PORT, () => {
   console.log(`The server is running on ${process.env.PORT}`);
