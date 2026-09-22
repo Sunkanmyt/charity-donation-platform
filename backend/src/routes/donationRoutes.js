@@ -7,10 +7,11 @@ const {
   getCampaignDonations,
 } = require("../controllers/donationController");
 
-const protect = require("../utils/tempAuth"); // TODO: replace with real auth middleware
+const protect = require("../middlewares/auth"); 
+const authorize = require("../middlewares/role");
 
 router.post("/", protect, createDonation);
 router.get("/my", protect, getMyDonations);
-router.get("/campaign/:campaignId", protect, getCampaignDonations);
+router.get("/campaign/:campaignId", protect, authorize("admin"), getCampaignDonations);
 
 module.exports = router;

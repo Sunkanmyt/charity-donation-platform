@@ -130,7 +130,6 @@ const getCampaignDonations = async (req, res) => {
         .json({ success: false, message: "Campaign not found", data: null });
     }
 
-    // TODO: after real auth is merged, allow only admin or the campaign creator
 
     const donations = await Donation.find({ campaign: campaignId })
       .populate("donor", "firstName lastName")
