@@ -7,13 +7,11 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     lastName: {
       type: String,
       required: true,
       trim: true,
     },
-
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -22,23 +20,19 @@ const userSchema = new mongoose.Schema(
       index: true,
       trim: true,
     },
-
     password: {
       type: String,
       required: true,
       minlength: 6,
       select: false,
     },
-
     phone: {
       type: String,
       trim: true,
     },
-
     profileImage: {
       type: String,
     },
-
     role: {
       type: String,
       enum: ["donor", "admin"],
@@ -51,12 +45,10 @@ const userSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
     },
-
     isActive: {
       type: Boolean,
       default: true,
     },
-
     verificationToken: String,
     verificationTokenExpires: Date,
 
