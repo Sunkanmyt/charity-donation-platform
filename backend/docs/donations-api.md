@@ -14,12 +14,12 @@ Any logged-in user (donor or admin) can donate.
 
 ### Request body (JSON)
 
-| Field | Type | Required | Rules |
-|---|---|---|---|
-| `campaignId` | string | Yes | Must be a valid ID of an existing, active campaign |
-| `amount` | number | Yes | Must be a number, at least 1 |
-| `isAnonymous` | boolean | No | Defaults to `false`. If `true`, the donor's name is hidden from admins. |
-| `message` | string | No | Maximum 300 characters |
+| Field         | Type    | Required | Rules                                                                   |
+| ------------- | ------- | -------- | ----------------------------------------------------------------------- |
+| `campaignId`  | string  | Yes      | Must be a valid ID of an existing, active campaign                      |
+| `amount`      | number  | Yes      | Must be a number, at least 1                                            |
+| `isAnonymous` | boolean | No       | Defaults to `false`. If `true`, the donor's name is hidden from admins. |
+| `message`     | string  | No       | Maximum 300 characters                                                  |
 
 ### Parameters
 
@@ -58,20 +58,20 @@ None. This endpoint has no URL parameters or query strings.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 400 | `campaignId` is missing or not a valid ID | `A valid campaign ID is required` |
-| 400 | `amount` is missing, not a number, or below 1 | `Amount must be at least 1` |
-| 400 | `message` is not text, or is longer than 300 characters | `Message must be text of 300 characters or fewer` |
-| 400 | The campaign exists but is not active | `This campaign is not accepting donations` |
-| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
-| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
-| 404 | No campaign has that ID | `Campaign not found` |
-| 500 | Something unexpected broke on the server | `Something went wrong` |
+| Status | When it happens                                         | `message`                                                 |
+| ------ | ------------------------------------------------------- | --------------------------------------------------------- |
+| 400    | `campaignId` is missing or not a valid ID               | `A valid campaign ID is required`                         |
+| 400    | `amount` is missing, not a number, or below 1           | `Amount must be at least 1`                               |
+| 400    | `message` is not text, or is longer than 300 characters | `Message must be text of 300 characters or fewer`         |
+| 400    | The campaign exists but is not active                   | `This campaign is not accepting donations`                |
+| 401    | No token was sent                                       | `Not authorized to access this route. No token provided.` |
+| 401    | The token is fake or expired                            | `Not authorized. Invalid or expired token.`               |
+| 404    | No campaign has that ID                                 | `Campaign not found`                                      |
+| 500    | Something unexpected broke on the server                | `Something went wrong`                                    |
 
 Every error uses the same shape:
 
-```json
+````json
 {
   "success": false,
   "message": "Campaign not found",
@@ -137,28 +137,28 @@ None. This is a GET request, so nothing is sent in the body.
     "total": 2
   }
 }
-```
+````
 
-| Field in `data` | Meaning |
-|---|---|
-| `donations` | The donations on this page, newest first |
-| `page` | The page number returned |
-| `totalPages` | How many pages exist in total |
-| `total` | How many donations this user has made in total |
+| Field in `data` | Meaning                                        |
+| --------------- | ---------------------------------------------- |
+| `donations`     | The donations on this page, newest first       |
+| `page`          | The page number returned                       |
+| `totalPages`    | How many pages exist in total                  |
+| `total`         | How many donations this user has made in total |
 
 If the user has made no donations yet, the request still succeeds, with `"donations": []` and `"total": 0`.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
-| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
-| 500 | Something unexpected broke on the server | `Something went wrong` |
+| Status | When it happens                          | `message`                                                 |
+| ------ | ---------------------------------------- | --------------------------------------------------------- |
+| 401    | No token was sent                        | `Not authorized to access this route. No token provided.` |
+| 401    | The token is fake or expired             | `Not authorized. Invalid or expired token.`               |
+| 500    | Something unexpected broke on the server | `Something went wrong`                                    |
 
 Every error uses the same shape:
 
-```json
+````json
 {
   "success": false,
   "message": "Not authorized. Invalid or expired token.",
@@ -228,9 +228,10 @@ None. This is a GET request, so nothing is sent in the body.
     }
   ]
 }
-```
+````
 
 Notes on the response:
+
 - `donor` is an object with `firstName` and `lastName` only. Email, phone and password are never included.
 - For anonymous donations, `donor` is `null`, but the amount, date and message are still shown.
 - If the campaign has no donations yet, the request still succeeds, with `"data": []`.
@@ -238,14 +239,14 @@ Notes on the response:
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 400 | `campaignId` is not a valid ID | `Invalid campaign ID` |
-| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
-| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
-| 403 | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
-| 404 | No campaign has that ID | `Campaign not found` |
-| 500 | Something unexpected broke on the server | `Something went wrong` |
+| Status | When it happens                           | `message`                                                                |
+| ------ | ----------------------------------------- | ------------------------------------------------------------------------ |
+| 400    | `campaignId` is not a valid ID            | `Invalid campaign ID`                                                    |
+| 401    | No token was sent                         | `Not authorized to access this route. No token provided.`                |
+| 401    | The token is fake or expired              | `Not authorized. Invalid or expired token.`                              |
+| 403    | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
+| 404    | No campaign has that ID                   | `Campaign not found`                                                     |
+| 500    | Something unexpected broke on the server  | `Something went wrong`                                                   |
 
 Every error uses the same shape:
 
@@ -255,3 +256,4 @@ Every error uses the same shape:
   "message": "Campaign not found",
   "data": null
 }
+```

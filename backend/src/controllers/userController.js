@@ -2,9 +2,10 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../utils/generateToken");
 
-const registerUser = async (req, res) => {
+exports.registerUser = async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone } = req.body;
+
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -22,6 +23,7 @@ const registerUser = async (req, res) => {
         message: "User with this email already exists",
       });
     }
+
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await User.create({
@@ -58,7 +60,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-const loginUser = async (req, res) => {
+exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -68,6 +70,7 @@ const loginUser = async (req, res) => {
         message: "Email and Password are Required",
       });
     }
+
     const user = await User.findOne({
       email: email.toLowerCase(),
     }).select("+password");
@@ -121,7 +124,8 @@ const loginUser = async (req, res) => {
     });
   }
 };
-const getProfile = async (req, res) => {
+
+exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
 
@@ -131,6 +135,7 @@ const getProfile = async (req, res) => {
         message: "User not found",
       });
     }
+
     return res.status(200).json({
       success: true,
       user,
@@ -145,7 +150,7 @@ const getProfile = async (req, res) => {
   }
 };
 
-const updateProfile = async (req, res) => {
+exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, email } = req.body;
     const user = await User.findById(req.user.id);
@@ -172,6 +177,7 @@ const updateProfile = async (req, res) => {
     if (email !== undefined) {
       user.email = email;
     }
+
     await user.save();
 
     return res.status(200).json({
@@ -194,7 +200,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-const changePassword = async (req, res) => {
+exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -246,12 +252,4 @@ const changePassword = async (req, res) => {
       message: "Failed to change password",
     });
   }
-};
-
-module.exports = {
-  registerUser,
-  getProfile,
-  loginUser,
-  updateProfile,
-  changePassword,
 };
