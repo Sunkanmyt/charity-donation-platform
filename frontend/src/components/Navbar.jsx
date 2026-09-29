@@ -29,7 +29,7 @@ export default function Navbar() {
                 </Link>
               )}
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                {user.name} ({user.role})
+                {user.firstName} {user.lastName} ({user.role})
               </span>
               <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                 Sign Out

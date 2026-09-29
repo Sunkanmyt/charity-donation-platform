@@ -98,7 +98,7 @@ export default function CampaignDetails() {
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {donations.map((d) => (
               <li key={d._id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                <span>{d.anonymous ? 'Anonymous Supporter' : d.donor?.name || 'Supporter'}</span>
+                <span>{d.anonymous ? 'Anonymous Supporter' : (d.donor?.firstName + ' ' + d.donor?.lastName) || 'Supporter'}</span>
                 <strong>${d.amount.toLocaleString()}</strong>
               </li>
             ))}

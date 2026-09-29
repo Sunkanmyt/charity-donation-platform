@@ -4,9 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import ErrorBanner from '../components/ErrorBanner';
 
 export default function Register() {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,16 +18,22 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    setError('');
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please verify and try again.');
       return;
     }
 
-    setError('');
     setLoading(true);
 
     try {
-      await register(name, email, password);
+      await register(firstName, lastName, phone, email, password);
       navigate('/');
     } catch (err) {
       setError(err.message || 'Registration failed.');
@@ -45,20 +54,45 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Full Name</label>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>First Name</label>
             <input
               type="text"
+              placeholder="John"
               required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '6px' }}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              style={{ width: "100%", padding: "0.6rem", border: "1px solid var(--border)", borderRadius: "6px" }}
             />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>Last Name</label>
+            <input
+              type="text"
+              placeholder="Doe"
+              required
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              style={{ width: "100%", padding: "0.6rem", border: "1px solid var(--border)", borderRadius: "6px" }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.3rem" }}>Phone Number</label>
+            <input
+              type="tel"
+              placeholder="+234 801 234 5678"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{ width: "100%", padding: "0.6rem", border: "1px solid var(--border)", borderRadius: "6px" }}
+            /> 
           </div>
 
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Email Address</label>
             <input
               type="email"
+              placeholder="johndoe@gmail.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -67,7 +101,7 @@ export default function Register() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Password (min 6 characters)</label>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Password (min 8 characters)</label>
             <input
               type="password"
               required
@@ -77,6 +111,23 @@ export default function Register() {
             />
           </div>
 
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Confirm Password</label>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '6px' }}
+            />
+          </div>
+
+          {confirmPassword && password !== confirmPassword && (
+            <span style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: "0.25rem", display: "block" }}>
+              Passwords do not match
+            </span>
+          )}
+          
           <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: '0.5rem' }}>
             {loading ? 'Creating Account...' : 'Register'}
           </button>

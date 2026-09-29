@@ -4,7 +4,7 @@ const generateToken = require("../utils/generateToken");
 
 exports.registerUser = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, phone } = req.body;
+    const { firstName, lastName, phone, email, password } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
@@ -34,7 +34,7 @@ exports.registerUser = async (req, res) => {
       phone,
     });
 
-    const token = generateToken(user);
+    const token = generateToken(user._id, user.role);
 
     return res.status(201).json({
       success: true,
@@ -101,7 +101,8 @@ exports.loginUser = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    const token = generateToken(user);
+    const token = generateToken(user._id, user.role);
+
     return res.status(200).json({
       success: true,
       message: "Login Successful",

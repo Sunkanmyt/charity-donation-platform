@@ -8,6 +8,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Delete modal state
+  const [campaignToDelete, setCampaignToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   const fetchCampaigns = async () => {
     try {
       const res = await api.get('/campaigns?limit=100');
@@ -23,13 +27,18 @@ export default function AdminDashboard() {
     fetchCampaigns();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this campaign?')) return;
+  const confirmDelete = async () => {
+    if (!campaignToDelete) return;
+    setDeleting(true);
+
     try {
-      await api.delete(`/campaigns/${id}`);
-      setCampaigns(campaigns.filter((c) => c._id !== id));
+      await api.delete(`/campaigns/${campaignToDelete._id}`);
+      setCampaigns((prev) => prev.filter((c) => c._id !== campaignToDelete._id));
+      setCampaignToDelete(null);
     } catch (err) {
       setError(err.message || 'Failed to delete campaign.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -85,24 +94,76 @@ export default function AdminDashboard() {
                 <tr key={c._id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '1rem', fontWeight: 600 }}>{c.title}</td>
                   <td style={{ padding: '1rem' }}>{c.category}</td>
-                  <td style={{ padding: '1rem' }}>${c.targetAmount.toLocaleString()}</td>
-                  <td style={{ padding: '1rem' }}>${c.raisedAmount.toLocaleString()}</td>
+                  <td style={{ padding: '1rem' }}>${c.targetAmount?.toLocaleString()}</td>
+                  <td style={{ padding: '1rem' }}>${c.raisedAmount?.toLocaleString() || 0}</td>
                   <td style={{ padding: '1rem' }}>
                     <span className={`badge badge-${c.status}`}>{c.status}</span>
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <button 
-                      onClick={() => handleDelete(c._id)} 
-                      className="btn btn-danger" 
-                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                    >
-                      Delete
-                    </button>
+                    <div style={{ display: 'inline-flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <Link 
+                        to={`/admin/campaigns/${c._id}/edit`} 
+                        className="btn btn-outline" 
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', textDecoration: 'none' }}
+                      >
+                        Edit
+                      </Link>
+                      <button 
+                        onClick={() => setCampaignToDelete(c)} 
+                        className="btn btn-danger" 
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {campaignToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+        >
+          <div className="card" style={{ maxWidth: '420px', width: '100%', padding: '1.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginBottom: '0.5rem' }}>Delete Campaign</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong>"{campaignToDelete.title}"</strong>? This action cannot be reversed.
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={deleting}
+                onClick={() => setCampaignToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={deleting}
+                onClick={confirmDelete}
+              >
+                {deleting ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

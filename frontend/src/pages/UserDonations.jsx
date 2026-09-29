@@ -12,7 +12,7 @@ export default function UserDonations() {
     const fetchMyDonations = async () => {
       try {
         const res = await api.get('/donations/my');
-        setDonations(res.data || []);
+        setDonations(res?.data?.donations || []);
       } catch (err) {
         setError(err.message || 'Unable to retrieve donation history.');
       } finally {

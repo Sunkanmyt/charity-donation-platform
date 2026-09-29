@@ -10,6 +10,7 @@ import CampaignDetails from './pages/CampaignDetails';
 import UserDonations from './pages/UserDonations';
 import AdminDashboard from './pages/AdminDashboard';
 import CreateCampaign from './pages/CreateCampaign';
+import EditCampaign from './pages/EditCampaign';
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/campaigns/new" element={<CreateCampaign />} />
+              <Route path="/admin/campaigns/:id/edit" element={<EditCampaign />} />
             </Route>
 
             {/* Catch-all redirect */}

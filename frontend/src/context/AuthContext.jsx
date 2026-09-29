@@ -16,8 +16,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await api.get('/auth/me');
-        setUser(response.data);
+        const response = await api.get('/users/me');
+        setUser(response.user);
       } catch (err) {
         localStorage.removeItem('token');
         setUser(null);
@@ -30,17 +30,17 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    const { token, user: userData } = response.data;
+    const response = await api.post('/users/login', { email, password });
+    const { token, user: userData } = response;
 
     localStorage.setItem('token', token);
     setUser(userData);
     return userData;
   };
 
-  const register = async (name, email, password) => {
-    const response = await api.post('/auth/register', { name, email, password });
-    const { token, user: userData } = response.data;
+  const register = async (firstName, lastName, phone, email, password) => {
+    const response = await api.post('/users/register', { firstName, lastName, phone, email, password });
+    const { token, user: userData } = response;
 
     localStorage.setItem('token', token);
     setUser(userData);
