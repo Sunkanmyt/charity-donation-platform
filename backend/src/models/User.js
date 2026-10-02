@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
@@ -50,6 +51,7 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
     verificationToken: String,
+    verificationTokenHash: String,
     verificationTokenExpires: Date,
 
     resetPasswordToken: String,

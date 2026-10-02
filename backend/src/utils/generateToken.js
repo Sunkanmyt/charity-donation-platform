@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const generateToken = (userId, role) => {
   return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
@@ -6,4 +7,8 @@ const generateToken = (userId, role) => {
   });
 };
 
-module.exports = generateToken;
+const generateVerificationToken = () => {
+  return crypto.randomBytes(32).toString("hex");
+};
+
+module.exports = { generateToken, generateVerificationToken };

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Donation = require("../models/Donation");
 const Campaign = require("../models/Campaign");
-
+const { sendEmail, emailTemplates } = require("../services/emailService");
 // POST /api/donations
 exports.createDonation = async (req, res) => {
   try {
@@ -62,6 +62,17 @@ exports.createDonation = async (req, res) => {
       $inc: { raisedAmount: numAmount },
     });
 
+    await sendEmail({
+      to: req.user.email,
+      subject: "Donation Successful",
+      html: emailTemplates.donationConfirmation(
+        req.user.firstName,
+        campaign.title,
+        numAmount,
+        donation._id,
+        donation.createdAt,
+      ),
+    });
     return res
       .status(201)
       .json({ success: true, message: "Donation successful", data: donation });
