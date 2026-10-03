@@ -1,10 +1,15 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const generateToken = require("../utils/generateToken");
+const {
+  generateToken,
+  generateVerificationToken,
+} = require("../utils/generateToken");
+const { sendVerificationEmail } = require("../services/emailService");
+const emailService = require("../services/emailService");
 
 exports.registerUser = async (req, res) => {
   try {
-    const { firstName, lastName, phone, email, password } = req.body;
+    const { firstName, lastName, email, password, phone, role } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
@@ -13,9 +18,7 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({
-      email: email.toLowerCase(),
-    });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
       return res.status(409).json({
@@ -25,20 +28,33 @@ exports.registerUser = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const verificationToken = generateVerificationToken();
 
     const user = await User.create({
       firstName,
       lastName,
       email: email.toLowerCase(),
       password: hashedPassword,
+      verificationTokenHash: verificationToken,
       phone,
+      role: "donor",
     });
 
+    
+    // 🚀 Send Welcome Email
+    try {
+      await sendVerificationEmail(user, verificationToken);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+    }
+
+    // Pass the created user's ID and role to the JWT generator
     const token = generateToken(user._id, user.role);
 
     return res.status(201).json({
       success: true,
-      message: "Registration successful",
+      message:
+        "Registration successful. Please check your email to verify your account.",
       token,
       user: {
         id: user._id,
@@ -51,7 +67,6 @@ exports.registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Registration failed",
@@ -70,7 +85,6 @@ exports.loginUser = async (req, res) => {
         message: "Email and Password are Required",
       });
     }
-
     const user = await User.findOne({
       email: email.toLowerCase(),
     }).select("+password");
@@ -101,7 +115,11 @@ exports.loginUser = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user);
+
+    emailService.sendLoginAlertEmail(user).catch((err) => {
+      console.error("Failed to send login alert:", err);
+    });
 
     return res.status(200).json({
       success: true,
@@ -118,6 +136,7 @@ exports.loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Login failed",
@@ -136,7 +155,6 @@ exports.getProfile = async (req, res) => {
         message: "User not found",
       });
     }
-
     return res.status(200).json({
       success: true,
       user,
@@ -178,9 +196,11 @@ exports.updateProfile = async (req, res) => {
     if (email !== undefined) {
       user.email = email;
     }
-
     await user.save();
 
+    emailService.sendProfileUpdateEmail(user).catch((err) => {
+      console.error("Failed to send profile update alert:", err);
+    });
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
@@ -241,6 +261,9 @@ exports.changePassword = async (req, res) => {
 
     await user.save();
 
+    sendPasswordChangeEmail(user).catch((err) =>
+      console.error("Failed to send password change alert:", err),
+    );
     return res.status(200).json({
       success: true,
       message: "Password changed successfully",
