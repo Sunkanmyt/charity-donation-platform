@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import CampaignDetails from './pages/CampaignDetails';
 import UserDonations from './pages/UserDonations';
+import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
 import CreateCampaign from './pages/CreateCampaign';
 import EditCampaign from './pages/EditCampaign';
@@ -32,6 +33,7 @@ export default function App() {
 
             {/* Admin-Only Routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="/admin/users" element={<AdminUsers />}/>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/campaigns/new" element={<CreateCampaign />} />
               <Route path="/admin/campaigns/:id/edit" element={<EditCampaign />} />

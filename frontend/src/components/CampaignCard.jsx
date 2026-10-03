@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 export default function CampaignCard({ campaign }) {
+  const isCompleted = campaign.status === 'completed';
   const progress = Math.min(100, Math.round((campaign.raisedAmount / campaign.targetAmount) * 100));
 
   return (
@@ -22,16 +23,35 @@ export default function CampaignCard({ campaign }) {
         </p>
 
         <div className="progress-track">
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
+          <div 
+            className="progress-fill" 
+            style={{ 
+              width: `${progress}%`,
+              backgroundColor: isCompleted ? '#16a34a' : undefined 
+            }} 
+          />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', margin: '0.5rem 0 1rem' }}>
-          <strong>${campaign.raisedAmount.toLocaleString()}</strong>
-          <span style={{ color: 'var(--text-muted)' }}>Goal: ${campaign.targetAmount.toLocaleString()}</span>
+          <strong>₦{campaign.raisedAmount.toLocaleString()}</strong>
+          <span style={{ color: 'var(--text-muted)' }}>Goal: ₦{campaign.targetAmount.toLocaleString()}</span>
         </div>
 
-        <Link to={`/campaigns/${campaign._id}`} className="btn btn-primary" style={{ width: '100%' }}>
-          View Details & Donate
+        <Link 
+          to={`/campaigns/${campaign._id}`} 
+          className="btn"
+          style={{ 
+            width: '100%', 
+            textAlign: 'center',
+            textDecoration: 'none',
+            fontWeight: 600,
+            padding: '0.65rem 1rem',
+            backgroundColor: isCompleted ? '#f1f5f9' : 'var(--primary, #2563eb)',
+            color: isCompleted ? '#475569' : '#ffffff',
+            border: isCompleted ? '1px solid #cbd5e1' : 'none',
+          }}
+        >
+          {isCompleted ? 'View Details (Goal Met)' : 'View Details & Donate'}
         </Link>
       </div>
     </div>

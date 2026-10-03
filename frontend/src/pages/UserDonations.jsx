@@ -34,7 +34,7 @@ export default function UserDonations() {
       <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'inline-block', minWidth: '240px' }}>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Impact</span>
         <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.25rem' }}>
-          ${totalGiven.toLocaleString()}
+          ₦{totalGiven.toLocaleString()}
         </div>
       </div>
 
@@ -57,11 +57,11 @@ export default function UserDonations() {
               {donations.map((d) => (
                 <tr key={d._id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '1rem', fontWeight: 500 }}>{d.campaign?.title || 'Unknown Campaign'}</td>
-                  <td style={{ padding: '1rem' }}>${d.amount.toLocaleString()}</td>
+                  <td style={{ padding: '1rem' }}>₦{d.amount.toLocaleString()}</td>
                   <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{new Date(d.createdAt).toLocaleDateString()}</td>
                   <td style={{ padding: '1rem' }}>
-                    <span className="badge" style={{ background: d.anonymous ? '#fee2e2' : '#e0e7ff', color: d.anonymous ? '#991b1b' : '#3730a3' }}>
-                      {d.anonymous ? 'Anonymous' : 'Public'}
+                    <span className="badge" style={{ background: d.isAnonymous ? '#fee2e2' : '#e0e7ff', color: d.isAnonymous ? '#991b1b' : '#3730a3' }}>
+                      {d.isAnonymous ? 'Anonymous' : 'Public'}
                     </span>
                   </td>
                 </tr>

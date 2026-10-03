@@ -4,7 +4,9 @@ const Campaign = require("../models/Campaign");
 const User = require("../models/User");
 const { sendEmail, emailTemplates } = require("../services/emailService");
 
-// POST /api/donations
+// @desc    Process a donation to a campaign & send email receipt
+// @route   POST /api/donations
+// @access  Private
 exports.createDonation = async (req, res) => {
   try {
     const { campaignId, amount, isAnonymous, message } = req.body;
@@ -86,7 +88,9 @@ exports.createDonation = async (req, res) => {
   }
 };
 
-// GET /api/donations/my?page=1&limit=10
+// @desc    Get donation history for the authenticated user
+// @route   GET /api/donations/my
+// @access  Private
 exports.getMyDonations = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -116,7 +120,9 @@ exports.getMyDonations = async (req, res) => {
   }
 };
 
-// GET /api/donations/campaign/:campaignId
+// @desc    Get all donations for a specific campaign
+// @route   GET /api/donations/campaign/:campaignId
+// @access  Public
 exports.getCampaignDonations = async (req, res) => {
   try {
     const { campaignId } = req.params;
@@ -158,7 +164,9 @@ exports.getCampaignDonations = async (req, res) => {
   }
 };
 
-// GET /api/donations/user/:userId?page=1&limit=10  (admin only)
+// @desc    Get donation history for a specific user (admin only)
+// @route   GET /api/donations/user/:userId
+// @access  Private/Admin
 exports.getUserDonations = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -170,7 +178,7 @@ exports.getUserDonations = async (req, res) => {
     }
 
     const user = await User.findById(userId).select(
-      "firstName lastName email role isActive"
+      "firstName lastName email role isActive",
     );
     if (!user) {
       return res

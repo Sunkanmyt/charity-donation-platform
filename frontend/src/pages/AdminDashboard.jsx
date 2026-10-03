@@ -52,9 +52,16 @@ export default function AdminDashboard() {
           <h1 style={{ fontSize: '1.75rem' }}>Admin Control Center</h1>
           <p style={{ color: 'var(--text-muted)' }}>Manage platform campaigns and verify fundraising activity.</p>
         </div>
-        <Link to="/admin/campaigns/new" className="btn btn-primary">
-          + Create New Campaign
-        </Link>
+
+        {/* Buttons group */}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <Link to="/admin/users" className="btn btn-outline">
+            Manage Users
+          </Link>
+          <Link to="/admin/campaigns/new" className="btn btn-primary">
+            + Create New Campaign
+          </Link>
+        </div>
       </div>
 
       <ErrorBanner message={error} onClose={() => setError('')} />
@@ -62,7 +69,7 @@ export default function AdminDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div className="card" style={{ padding: '1.25rem' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>TOTAL FUNDS RAISED</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>${totalFunds.toLocaleString()}</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>₦{totalFunds.toLocaleString()}</div>
         </div>
         <div className="card" style={{ padding: '1.25rem' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>ACTIVE CAMPAIGNS</div>
@@ -94,8 +101,8 @@ export default function AdminDashboard() {
                 <tr key={c._id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '1rem', fontWeight: 600 }}>{c.title}</td>
                   <td style={{ padding: '1rem' }}>{c.category}</td>
-                  <td style={{ padding: '1rem' }}>${c.targetAmount?.toLocaleString()}</td>
-                  <td style={{ padding: '1rem' }}>${c.raisedAmount?.toLocaleString() || 0}</td>
+                  <td style={{ padding: '1rem' }}>₦{c.targetAmount?.toLocaleString()}</td>
+                  <td style={{ padding: '1rem' }}>₦{c.raisedAmount?.toLocaleString() || 0}</td>
                   <td style={{ padding: '1rem' }}>
                     <span className={`badge badge-${c.status}`}>{c.status}</span>
                   </td>

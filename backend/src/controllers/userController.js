@@ -7,6 +7,9 @@ const {
 const { sendVerificationEmail } = require("../services/emailService");
 const emailService = require("../services/emailService");
 
+// @desc    Register a new user account
+// @route   POST /api/users/register
+// @access  Public
 exports.registerUser = async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone, role } = req.body;
@@ -40,7 +43,6 @@ exports.registerUser = async (req, res) => {
       role: "donor",
     });
 
-    
     // 🚀 Send Welcome Email
     try {
       await sendVerificationEmail(user, verificationToken);
@@ -75,6 +77,9 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+// @desc    Authenticate user & return JWT token
+// @route   POST /api/users/login
+// @access  Public
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -145,6 +150,9 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+// @desc    Get currently authenticated user's profile
+// @route   GET /api/users/profile
+// @access  Private
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -169,6 +177,9 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+// @desc    Update currently authenticated user's profile
+// @route   PUT /api/users/profile
+// @access  Private
 exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, email } = req.body;
@@ -221,6 +232,9 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Change currently authenticated user's password
+// @route   PUT /api/users/change-password
+// @access  Private
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -306,7 +320,9 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
-// GET /api/users?page=1&limit=10  (admin only)
+// @desc    Get all users (Admin only)
+// @route   GET /api/users
+// @access  Private (Admin only)
 exports.getAllUsers = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -314,7 +330,9 @@ exports.getAllUsers = async (req, res) => {
 
     const [users, total] = await Promise.all([
       User.find()
-        .select("firstName lastName email phone role isActive lastLogin createdAt")
+        .select(
+          "firstName lastName email phone role isActive lastLogin createdAt",
+        )
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),

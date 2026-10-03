@@ -3,7 +3,7 @@ const emailTemplates = require("../templates/emails/emailTemplates");
 const verifyAccountEmail = require("../templates/emails/verifyAccountEmail");
 
 const sendVerificationEmail = async (user, verificationToken) => {
-  const verificationUrl = `${process.env.FRONTEND_URL}/verify-account/${verificationToken}`;
+  const verificationUrl = `${process.env.CLIENT_URL}/verify-account/${verificationToken}`;
 
   const email = verifyAccountEmail({
     firstName: user.firstName,
@@ -18,10 +18,7 @@ const sendVerificationEmail = async (user, verificationToken) => {
 };
 
 const sendLoginAlertEmail = async (user) => {
-  const html = emailTemplates.loginAlert(
-    user.firstName,
-    user.lastLogin
-  );
+  const html = emailTemplates.loginAlert(user.firstName, user.lastLogin);
 
   await sendEmail({
     to: user.email,

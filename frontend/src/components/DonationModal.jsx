@@ -54,7 +54,7 @@ export default function DonationModal({ campaignId, campaignTitle, onClose, onSu
                   style={{ flex: 1, padding: '0.4rem' }}
                   onClick={() => setAmount(val)}
                 >
-                  ${val}
+                  ₦{val}
                 </button>
               ))}
             </div>
@@ -62,7 +62,7 @@ export default function DonationModal({ campaignId, campaignTitle, onClose, onSu
               type="number"
               min="1"
               step="any"
-              placeholder="Or enter custom amount ($)"
+              placeholder="Or enter custom amount (₦)"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
