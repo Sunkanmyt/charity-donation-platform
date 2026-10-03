@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -51,7 +52,54 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setUser(null);
   };
+const lastActive = useRef(Date.now());
+  const ACTIVE_WINDOW = 5 * 60 * 1000;
+  const BUFFER = 60 * 1000;
 
+  useEffect(() => {
+    const mark = () => { lastActive.current = Date.now(); };
+    const events = ['click', 'keydown', 'mousemove', 'scroll'];
+    events.forEach((e) => window.addEventListener(e, mark));
+    return () => events.forEach((e) => window.removeEventListener(e, mark));
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let timer;
+
+    const schedule = () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      let exp;
+      try {
+        exp = jwtDecode(token).exp;
+      } catch {
+        logout();
+        return;
+      }
+
+      const delay = Math.max(exp * 1000 - Date.now() - BUFFER, 0);
+
+      timer = setTimeout(async () => {
+        const isActive = Date.now() - lastActive.current < ACTIVE_WINDOW;
+        if (!isActive) {
+          logout();
+          return;
+        }
+        try {
+          const response = await api.post('/users/refresh');
+          localStorage.setItem('token', response.token);
+          schedule();
+        } catch {
+          logout();
+        }
+      }, delay);
+    };
+
+    schedule();
+    return () => clearTimeout(timer);
+  }, [user]);
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin: user?.role === 'admin' }}>
       {children}
