@@ -5,15 +5,18 @@ const {
   createDonation,
   getMyDonations,
   getCampaignDonations,
+  getUserDonations,
 } = require("../controllers/donationController");
 
 const protect = require("../middlewares/auth");
+const authorize = require("../middlewares/role");
 
-// Public route
-router.get("/campaign/:campaignId", getCampaignDonations);
-
-// Protected routes
+// Protected routes (any logged-in user)
 router.post("/", protect, createDonation);
 router.get("/my", protect, getMyDonations);
+
+// Admin-only routes
+router.get("/campaign/:campaignId", protect, authorize("admin"), getCampaignDonations);
+router.get("/user/:userId", protect, authorize("admin"), getUserDonations);
 
 module.exports = router;

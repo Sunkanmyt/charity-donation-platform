@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
 const Donation = require("../models/Donation");
 const Campaign = require("../models/Campaign");
+const User = require("../models/User");
 const { sendEmail, emailTemplates } = require("../services/emailService");
+
 // POST /api/donations
 exports.createDonation = async (req, res) => {
   try {
@@ -147,6 +149,59 @@ exports.getCampaignDonations = async (req, res) => {
       success: true,
       message: "Campaign donations retrieved",
       data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Something went wrong", data: null });
+  }
+};
+
+// GET /api/donations/user/:userId?page=1&limit=10  (admin only)
+exports.getUserDonations = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID", data: null });
+    }
+
+    const user = await User.findById(userId).select(
+      "firstName lastName email role isActive"
+    );
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found", data: null });
+    }
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+
+    const filter = { donor: userId };
+
+    const [donations, total] = await Promise.all([
+      Donation.find(filter)
+        .populate("campaign", "title")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Donation.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "User donation history retrieved",
+      data: {
+        user,
+        donations,
+        page,
+        totalPages: Math.ceil(total / limit),
+        total,
+      },
     });
   } catch (error) {
     console.error(error);

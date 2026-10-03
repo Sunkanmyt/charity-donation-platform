@@ -7,7 +7,7 @@ const {
 const { sendVerificationEmail } = require("../services/emailService");
 const emailService = require("../services/emailService");
 
-const registerUser = async (req, res) => {
+exports.registerUser = async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone, role } = req.body;
 
@@ -75,7 +75,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-const loginUser = async (req, res) => {
+exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -144,7 +144,8 @@ const loginUser = async (req, res) => {
     });
   }
 };
-const getProfile = async (req, res) => {
+
+exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
 
@@ -168,7 +169,7 @@ const getProfile = async (req, res) => {
   }
 };
 
-const updateProfile = async (req, res) => {
+exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, email } = req.body;
     const user = await User.findById(req.user.id);
@@ -220,7 +221,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-const changePassword = async (req, res) => {
+exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -277,10 +278,62 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = {
-  registerUser,
-  getProfile,
-  loginUser,
-  updateProfile,
-  changePassword,
+// @desc    Refresh session token before it expires
+// @route   POST /api/users/refresh
+// @access  Private
+exports.refreshToken = async (req, res) => {
+  try {
+    const newToken = generateToken(req.user._id, req.user.role);
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      token: newToken,
+      user: {
+        _id: req.user._id,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to refresh authentication token",
+    });
+  }
+};
+
+// GET /api/users?page=1&limit=10  (admin only)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+
+    const [users, total] = await Promise.all([
+      User.find()
+        .select("firstName lastName email phone role isActive lastLogin createdAt")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      User.countDocuments(),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Users retrieved",
+      users,
+      page,
+      totalPages: Math.ceil(total / limit),
+      total,
+    });
+  } catch (error) {
+    console.error("Get all users error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+    });
+  }
 };
