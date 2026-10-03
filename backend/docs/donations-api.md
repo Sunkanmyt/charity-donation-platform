@@ -257,3 +257,94 @@ Every error uses the same shape:
   "data": null
 }
 ```
+---
+
+## 4. View a user's donation history (admin only)
+
+**Endpoint:** `GET /api/donations/user/:userId`
+
+**Purpose:** Returns one user's basic details and their donation history, newest first, so an admin can see everything a particular donor has given. Each donation shows the title of the campaign it went to. Results come in pages.
+
+**Authentication:** Required. Send the login token in the request header:
+
+`Authorization: Bearer <token>`
+
+**Authorization:** Admin only. Users with the role `donor` receive a 403 error.
+
+### Request body
+
+None. This is a GET request, so nothing is sent in the body.
+
+### Parameters
+
+URL:
+
+| Parameter | Type | Required | Rules |
+|---|---|---|---|
+| `userId` | string | Yes | Must be a valid ID of an existing user. |
+
+Query string:
+
+| Parameter | Type | Required | Default | Rules |
+|---|---|---|---|---|
+| `page` | number | No | `1` | Anything below 1 or not a number becomes `1`. |
+| `limit` | number | No | `10` | Minimum 1, maximum 50. Bigger values are reduced to 50. |
+
+### Example request
+
+`GET /api/donations/user/64b7f0c2a1b2c3d4e5f60718?page=1&limit=10`
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "User donation history retrieved",
+  "data": {
+    "user": {
+      "_id": "64b7f0c2a1b2c3d4e5f60718",
+      "firstName": "Ada",
+      "lastName": "Obi",
+      "email": "ada@example.com",
+      "role": "donor",
+      "isActive": true
+    },
+    "donations": [
+      {
+        "_id": "6ab13b1c7d19d985a0767120",
+        "donor": "64b7f0c2a1b2c3d4e5f60718",
+        "campaign": {
+          "_id": "6ab1390f98f8da19b8b3143e",
+          "title": "Help Build a School"
+        },
+        "amount": 2000,
+        "status": "successful",
+        "isAnonymous": true,
+        "message": "God bless this cause",
+        "createdAt": "2026-09-21T14:30:11.204Z",
+        "updatedAt": "2026-09-21T14:30:11.204Z"
+      }
+    ],
+    "page": 1,
+    "totalPages": 1,
+    "total": 1
+  }
+}
+```
+
+Notes on the response:
+
+- `user` contains only the fields shown above. The password is never included.
+- Anonymous donations are included, with `isAnonymous: true`, because the admin chose to look up this specific user.
+- If the user has made no donations, the request still succeeds, with `"donations": []` and `"total": 0`.
+
+### Error responses
+
+| Status | When it happens | `message` |
+|---|---|---|
+| 400 | `userId` is not a valid ID | `Invalid user ID` |
+| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
+| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
+| 403 | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
+| 404 | No user has that ID | `User not found` |
+| 500 | Something unexpected broke on the server | `Something went wrong` |
