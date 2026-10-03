@@ -8,6 +8,20 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Track user activity to prevent refreshing tokens for abandoned tabs
+  const lastActive = useRef(Date.now());
+  const ACTIVE_WINDOW = 5 * 60 * 1000; // 5 minutes
+  const BUFFER = 60 * 1000; // Refresh 60 seconds before token expires
+
+  useEffect(() => {
+    const markActivity = () => { lastActive.current = Date.now(); };
+
+    const events = ['click', 'keydown', 'mousemove', 'scroll'];
+    events.forEach((e) => window.addEventListener(e, markActivity));
+    return () => events.forEach((e) => window.removeEventListener(e, markActivity));
+  }, []);
+
+  // Check logged-in status on initial load/reload
   useEffect(() => {
     const checkLoggedIn = async () => {
       const token = localStorage.getItem('token');
@@ -29,6 +43,53 @@ export const AuthProvider = ({ children }) => {
 
     checkLoggedIn();
   }, []);
+
+  // Schedule automatic background token refresh
+  useEffect(() => {
+    if (!user) return;
+    let timer;
+
+    const scheduleRefresh = () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      let exp;
+      try {
+        exp = jwtDecode(token).exp;
+      } catch {
+        logout();
+        return;
+      }
+
+      // Calculate time remaining until token expiration minus buffer (in ms)
+      const delay = Math.max(exp * 1000 - Date.now() - BUFFER, 0);
+
+      timer = setTimeout(async () => {
+        const isActive = Date.now() - lastActive.current < ACTIVE_WINDOW;
+        if (!isActive) {
+          logout();
+          return;
+        }
+
+        try {
+          const response = await api.post('/users/refresh');
+          const newToken = response.token
+
+          if(newToken) {
+            localStorage.setItem('token', newToken);
+            scheduleRefresh();
+          } else {
+            logout();
+          }
+        } catch {
+          logout();
+        }
+      }, delay);
+    };
+
+    scheduleRefresh();
+    return () => clearTimeout(timer);
+  }, [user]);
 
   const login = async (email, password) => {
     const response = await api.post('/users/login', { email, password });
@@ -52,54 +113,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setUser(null);
   };
-const lastActive = useRef(Date.now());
-  const ACTIVE_WINDOW = 5 * 60 * 1000;
-  const BUFFER = 60 * 1000;
 
-  useEffect(() => {
-    const mark = () => { lastActive.current = Date.now(); };
-    const events = ['click', 'keydown', 'mousemove', 'scroll'];
-    events.forEach((e) => window.addEventListener(e, mark));
-    return () => events.forEach((e) => window.removeEventListener(e, mark));
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    let timer;
-
-    const schedule = () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      let exp;
-      try {
-        exp = jwtDecode(token).exp;
-      } catch {
-        logout();
-        return;
-      }
-
-      const delay = Math.max(exp * 1000 - Date.now() - BUFFER, 0);
-
-      timer = setTimeout(async () => {
-        const isActive = Date.now() - lastActive.current < ACTIVE_WINDOW;
-        if (!isActive) {
-          logout();
-          return;
-        }
-        try {
-          const response = await api.post('/users/refresh');
-          localStorage.setItem('token', response.token);
-          schedule();
-        } catch {
-          logout();
-        }
-      }, delay);
-    };
-
-    schedule();
-    return () => clearTimeout(timer);
-  }, [user]);
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin: user?.role === 'admin' }}>
       {children}

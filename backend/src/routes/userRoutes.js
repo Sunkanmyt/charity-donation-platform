@@ -7,6 +7,7 @@ const {
   loginUser,
   updateProfile,
   changePassword,
+  refreshToken,
   getAllUsers,
 } = require("../controllers/userController");
 
@@ -21,6 +22,7 @@ router.post("/login", loginUser);
 router.get("/me", protect, getProfile);
 router.patch("/profile", protect, updateProfile);
 router.patch("/password", protect, changePassword);
+router.post("/refresh", protect, refreshToken);
 
 // Admin-only routes
 router.get("/", protect, authorize("admin"), getAllUsers);

@@ -255,6 +255,34 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+// @desc    Refresh session token before it expires
+// @route   POST /api/users/refresh
+// @access  Private
+exports.refreshToken = async (req, res) => {
+  try {
+    const newToken = generateToken(req.user._id, req.user.role);
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      token: newToken,
+      user: {
+        _id: req.user._id,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to refresh authentication token",
+    });
+  }
+};
+
 // GET /api/users?page=1&limit=10  (admin only)
 exports.getAllUsers = async (req, res) => {
   try {

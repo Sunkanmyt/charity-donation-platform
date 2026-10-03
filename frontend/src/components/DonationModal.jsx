@@ -4,7 +4,7 @@ import ErrorBanner from './ErrorBanner';
 
 export default function DonationModal({ campaignId, campaignTitle, onClose, onSuccess }) {
   const [amount, setAmount] = useState('');
-  const [anonymous, setAnonymous] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,7 +22,7 @@ export default function DonationModal({ campaignId, campaignTitle, onClose, onSu
       await api.post('/donations', {
         campaignId,
         amount: Number(amount),
-        anonymous
+        isAnonymous
       });
       onSuccess();
     } catch (err) {
@@ -74,8 +74,8 @@ export default function DonationModal({ campaignId, campaignTitle, onClose, onSu
             <input
               type="checkbox"
               id="anon"
-              checked={anonymous}
-              onChange={(e) => setAnonymous(e.target.checked)}
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
             />
             <label htmlFor="anon" style={{ fontSize: '0.9rem' }}>Donate anonymously</label>
           </div>
