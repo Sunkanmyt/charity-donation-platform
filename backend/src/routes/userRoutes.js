@@ -8,9 +8,11 @@ const {
   updateProfile,
   changePassword,
   refreshToken,
+  getAllUsers,
 } = require("../controllers/userController");
 
 const protect = require("../middlewares/auth");
+const authorize = require("../middlewares/role");
 
 // Public routes
 router.post("/register", registerUser);
@@ -21,5 +23,8 @@ router.get("/me", protect, getProfile);
 router.patch("/profile", protect, updateProfile);
 router.patch("/password", protect, changePassword);
 router.post("/refresh", protect, refreshToken);
+
+// Admin-only routes
+router.get("/", protect, authorize("admin"), getAllUsers);
 
 module.exports = router;

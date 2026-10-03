@@ -282,3 +282,35 @@ exports.refreshToken = async (req, res) => {
     });
   }
 };
+
+// GET /api/users?page=1&limit=10  (admin only)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+
+    const [users, total] = await Promise.all([
+      User.find()
+        .select("firstName lastName email phone role isActive lastLogin createdAt")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      User.countDocuments(),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Users retrieved",
+      users,
+      page,
+      totalPages: Math.ceil(total / limit),
+      total,
+    });
+  } catch (error) {
+    console.error("Get all users error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+    });
+  }
+};
