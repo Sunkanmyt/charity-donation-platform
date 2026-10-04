@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   getProfile,
   registerUser,
+  verifyEmail,
   loginUser,
   updateProfile,
   changePassword,
@@ -16,6 +17,7 @@ const authorize = require("../middlewares/role");
 
 // Public routes
 router.post("/register", registerUser);
+router.get("/verify/:token", verifyEmail);
 router.post("/login", loginUser);
 
 // Protected routes

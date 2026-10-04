@@ -1,7 +1,6 @@
 const verifyAccountEmail = ({ firstName, verificationUrl }) => {
   return {
     subject: "Verify Your Hope Share Platform Account",
-
     html: `
       <!DOCTYPE html>
       <html lang="en">

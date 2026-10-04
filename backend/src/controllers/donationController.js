@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Donation = require("../models/Donation");
 const Campaign = require("../models/Campaign");
 const User = require("../models/User");
-const { sendEmail, emailTemplates } = require("../services/emailService");
+const emailService = require("../services/emailService");
 
 // @desc    Process a donation to a campaign & send email receipt
 // @route   POST /api/donations
@@ -66,17 +66,14 @@ exports.createDonation = async (req, res) => {
       $inc: { raisedAmount: numAmount },
     });
 
-    await sendEmail({
-      to: req.user.email,
-      subject: "Donation Successful",
-      html: emailTemplates.donationConfirmation(
-        req.user.firstName,
-        campaign.title,
-        numAmount,
-        donation._id,
-        donation.createdAt,
-      ),
-    });
+    await emailService.sendDonationConfirmationEmail(
+      req.user,
+      campaign.title,
+      numAmount,
+      donation._id,
+      donation.createdAt,
+    );
+
     return res
       .status(201)
       .json({ success: true, message: "Donation successful", data: donation });

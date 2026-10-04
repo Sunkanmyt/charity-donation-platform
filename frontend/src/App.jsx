@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import CampaignDetails from './pages/CampaignDetails';
 import UserDonations from './pages/UserDonations';
 import AdminUsers from './pages/AdminUsers';
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email/:token" element={<VerifyEmail />} />
             <Route path="/campaigns/:id" element={<CampaignDetails />} />
 
             {/* Authenticated Donor Routes */}

@@ -1,10 +1,10 @@
 const User = require("../models/User");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const {
   generateToken,
   generateVerificationToken,
 } = require("../utils/generateToken");
-const { sendVerificationEmail } = require("../services/emailService");
 const emailService = require("../services/emailService");
 
 // @desc    Register a new user account
@@ -32,20 +32,27 @@ exports.registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const verificationToken = generateVerificationToken();
+    const verificationTokenHash = crypto
+      .createHash("sha256")
+      .update(verificationToken)
+      .digest("hex");
+    const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
 
     const user = await User.create({
       firstName,
       lastName,
       email: email.toLowerCase(),
       password: hashedPassword,
-      verificationTokenHash: verificationToken,
+      verificationTokenHash,
+      verificationTokenExpires,
+      isVerified: false,
       phone,
       role: "donor",
     });
 
-    // 🚀 Send Welcome Email
+    // Send Welcome Email
     try {
-      await sendVerificationEmail(user, verificationToken);
+      await emailService.sendVerificationEmail(user, verificationToken);
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
     }
@@ -65,6 +72,7 @@ exports.registerUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        isVerified: user.isVerified,
       },
     });
   } catch (error) {
@@ -74,6 +82,55 @@ exports.registerUser = async (req, res) => {
       message: "Registration failed",
       error: error.message,
     });
+  }
+};
+
+// @desc    Verify user email via token
+// @route   GET /api/users/verify/:token
+// @access  Public
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required",
+      });
+    }
+
+    // Hash the token passed in URL to compare with DB
+    const verificationTokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    // Find user by verification token and check that it hasn't expired
+    const user = await User.findOne({
+      verificationTokenHash,
+      verificationTokenExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is invalid or has expired.",
+      });
+    }
+
+    // Mark verified and wipe one-time tokens
+    user.isVerified = true;
+    user.verificationTokenHash = undefined;
+    user.verificationTokenExpires = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Email successfully verified! You can now log in.",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -137,6 +194,7 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        isVerified: user.isVerified,
       },
     });
   } catch (error) {
@@ -212,6 +270,7 @@ exports.updateProfile = async (req, res) => {
     emailService.sendProfileUpdateEmail(user).catch((err) => {
       console.error("Failed to send profile update alert:", err);
     });
+
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
@@ -275,9 +334,11 @@ exports.changePassword = async (req, res) => {
 
     await user.save();
 
-    sendPasswordChangeEmail(user).catch((err) =>
-      console.error("Failed to send password change alert:", err),
-    );
+    emailService
+      .sendPasswordChangeEmail(user)
+      .catch((err) =>
+        console.error("Failed to send password change alert:", err),
+      );
     return res.status(200).json({
       success: true,
       message: "Password changed successfully",

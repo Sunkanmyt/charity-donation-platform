@@ -3,7 +3,7 @@ const emailTemplates = require("../templates/emails/emailTemplates");
 const verifyAccountEmail = require("../templates/emails/verifyAccountEmail");
 
 const sendVerificationEmail = async (user, verificationToken) => {
-  const verificationUrl = `${process.env.CLIENT_URL}/verify-account/${verificationToken}`;
+  const verificationUrl = `${process.env.CLIENT_URL}/verify-email/${verificationToken}`;
 
   const email = verifyAccountEmail({
     firstName: user.firstName,
@@ -47,11 +47,32 @@ const sendPasswordChangeEmail = async (user) => {
   });
 };
 
+const sendDonationConfirmationEmail = async (
+  user,
+  campaignTitle,
+  amount,
+  donationId,
+  donationDate,
+) => {
+  const html = emailTemplates.donationConfirmation(
+    user.firstName,
+    campaignTitle,
+    amount,
+    donationId,
+    donationDate,
+  );
+
+  await sendEmail({
+    to: user.email,
+    subject: "Donation Successful",
+    html,
+  });
+};
+
 module.exports = {
-  sendEmail,
-  emailTemplates,
   sendVerificationEmail,
   sendLoginAlertEmail,
   sendProfileUpdateEmail,
   sendPasswordChangeEmail,
+  sendDonationConfirmationEmail,
 };

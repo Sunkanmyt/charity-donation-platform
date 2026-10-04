@@ -1,4 +1,5 @@
 const Campaign = require("../models/Campaign");
+const Donation = require("../models/Donation");
 const { uploadToCloudinary } = require("../config/cloudinary");
 
 // @desc    Get all campaigns (with search, category filter & pagination)
@@ -6,8 +7,9 @@ const { uploadToCloudinary } = require("../config/cloudinary");
 // @access  Public
 exports.getCampaigns = async (req, res) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 6;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    // Cap limit between 1 and a maximum of 50 to prevent memory exhaustion
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 6), 50);
     const skip = (page - 1) * limit;
 
     const query = {};
@@ -27,7 +29,7 @@ exports.getCampaigns = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("createdBy", "name email");
+      .populate("createdBy", "firstName lastName email");
 
     res.status(200).json({
       success: true,
@@ -55,7 +57,7 @@ exports.getCampaignById = async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id).populate(
       "createdBy",
-      "name email",
+      "firstName lastName email",
     );
 
     if (!campaign) {
@@ -170,7 +172,7 @@ exports.updateCampaign = async (req, res) => {
   }
 };
 
-// @desc    Delete campaign
+// @desc    Delete campaign & cascade delete associated donations
 // @route   DELETE /api/campaigns/:id
 // @access  Private (Admin only)
 exports.deleteCampaign = async (req, res) => {
@@ -185,11 +187,15 @@ exports.deleteCampaign = async (req, res) => {
       });
     }
 
+    // Delete all donations linked to this campaign ID
+    await Donation.deleteMany({ campaign: req.params.id });
+
+    // Delete the campaign itself
     await Campaign.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: "Campaign deleted successfully",
+      message: "Campaign and associated donations deleted successfully",
       data: null,
     });
   } catch (error) {

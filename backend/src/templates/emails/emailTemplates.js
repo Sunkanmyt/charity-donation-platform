@@ -1,8 +1,5 @@
 const emailTemplates = {
-  // =========================================================
-  // 1. NEW LOGIN ALERT
-  // =========================================================
-
+  // 1. New Login Alert
   loginAlert: (firstName, time) => `
     <!DOCTYPE html>
     <html lang="en">
@@ -170,10 +167,7 @@ const emailTemplates = {
     </html>
   `,
 
-  // =========================================================
-  // 2. PROFILE UPDATE
-  // =========================================================
-
+  // 2. Profile Update
   profileUpdate: (firstName) => `
     <!DOCTYPE html>
     <html lang="en">
@@ -322,10 +316,7 @@ const emailTemplates = {
     </html>
   `,
 
-  // =========================================================
-  // 3. PASSWORD CHANGE
-  // =========================================================
-
+  // 3. Password Change
   passwordChange: (firstName) => `
     <!DOCTYPE html>
     <html lang="en">
@@ -474,170 +465,7 @@ const emailTemplates = {
     </html>
   `,
 
-  // =========================================================
-  // 4. EMAIL VERIFICATION
-  // =========================================================
-
-  verificationEmail: (firstName, verificationUrl) => `
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Verify Your Email</title>
-      </head>
-
-      <body style="
-        margin: 0;
-        padding: 0;
-        background-color: #f5f7f9;
-        font-family: Arial, Helvetica, sans-serif;
-        color: #17202a;
-      ">
-        <div style="
-          width: 100%;
-          padding: 40px 0;
-          background-color: #f5f7f9;
-        ">
-          <div style="
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid #e7ebef;
-          ">
-
-            <div style="
-              padding: 28px 32px;
-              background-color: #111827;
-            ">
-              <div style="
-                font-size: 22px;
-                font-weight: 700;
-                color: #ffffff;
-              ">
-                Hope Share Platform
-              </div>
-
-              <div style="
-                margin-top: 6px;
-                font-size: 13px;
-                color: #cbd5e1;
-              ">
-                Welcome to the community
-              </div>
-            </div>
-
-            <div style="padding: 40px 32px;">
-
-              <div style="
-                width: 48px;
-                height: 48px;
-                line-height: 48px;
-                text-align: center;
-                background-color: #eef6ff;
-                border-radius: 12px;
-                color: #2563eb;
-                font-size: 21px;
-                font-weight: 700;
-                margin-bottom: 24px;
-              ">
-                ✓
-              </div>
-
-              <h1 style="
-                margin: 0 0 12px 0;
-                font-size: 26px;
-                line-height: 1.3;
-                color: #111827;
-              ">
-                Verify your email address
-              </h1>
-
-              <p style="
-                margin: 0 0 16px 0;
-                font-size: 15px;
-                line-height: 1.7;
-                color: #59636e;
-              ">
-                Hi ${firstName},
-              </p>
-
-              <p style="
-                margin: 0 0 28px 0;
-                font-size: 15px;
-                line-height: 1.7;
-                color: #59636e;
-              ">
-                Thanks for creating an account with Hope Share Platform.
-                Please verify your email address to activate your account.
-              </p>
-
-              <div style="text-align: center; margin: 32px 0;">
-                <a
-                  href="${verificationUrl}"
-                  style="
-                    display: inline-block;
-                    padding: 14px 28px;
-                    background-color: #2563eb;
-                    color: #ffffff;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 700;
-                    border-radius: 8px;
-                  "
-                >
-                  Verify Email Address
-                </a>
-              </div>
-
-              <p style="
-                margin: 0 0 10px 0;
-                font-size: 13px;
-                line-height: 1.6;
-                color: #8a949e;
-              ">
-                This verification link will expire after 24 hours.
-              </p>
-
-              <p style="
-                margin: 0;
-                font-size: 13px;
-                line-height: 1.6;
-                color: #8a949e;
-              ">
-                If you did not create this account, you can safely ignore
-                this email.
-              </p>
-
-            </div>
-
-            <div style="
-              padding: 24px 32px;
-              background-color: #fafafa;
-              border-top: 1px solid #edf0f2;
-            ">
-              <p style="
-                margin: 0;
-                font-size: 12px;
-                line-height: 1.6;
-                color: #8a949e;
-              ">
-                © ${new Date().getFullYear()} Hope Share Platform
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </body>
-    </html>
-  `,
-
-  // =========================================================
-  // 5. DONATION CONFIRMATION
-  // =========================================================
-
+  // 4. Donation Confirmation
   donationConfirmation: (
     firstName,
     campaignTitle,

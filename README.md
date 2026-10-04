@@ -69,6 +69,7 @@ charity-donation-platform/
 │   ├── .gitignore
 │   └── package.json
 └── frontend/
+    ├── public/                 # Favicon and Logo
     ├── src/
     │   ├── components/         # Reusable UI (Navbar, DonationModal, ErrorBanner)
     │   ├── context/            # AuthContext (sliding token refresh)
@@ -157,15 +158,16 @@ npm run dev
 
 ### User & Authentication Routes (`/api/users`)
 
-| Method | Route                 | Access  | Description                                   |
-| ------ | --------------------- | ------- | --------------------------------------------- |
-| POST   | `/api/users/register` | Public  | Register a new user account                   |
-| POST   | `/api/users/login`    | Public  | Authenticate credentials and return JWT       |
-| GET    | `/api/users/me`       | Private | Retrieve authenticated user profile           |
-| PATCH  | `/api/users/profile`  | Private | Update account details (name, phone, address) |
-| PATCH  | `/api/users/password` | Private | Update user password                          |
-| POST   | `/api/users/refresh`  | Private | Proactively renew expiring JWT session        |
-| GET    | `/api/users`          | Admin   | Retrieve paginated system user directory      |
+| Method | Route                      | Access  | Description                                                     |
+| ------ | -------------------------- | ------- | --------------------------------------------------------------- |
+| POST   | `/api/users/register`      | Public  | Register a new donor or admin account; sends verification email |
+| GET    | `/api/users/verify/:token` | Public  | Verify email address via single-use SHA-256 token               |
+| POST   | `/api/users/login`         | Public  | Authenticate credentials and return signed JWT                  |
+| GET    | `/api/users/me`            | Private | Retrieve authenticated user profile and verification status     |
+| PATCH  | `/api/users/profile`       | Private | Update account details (firstName, lastName, phone, address)    |
+| PATCH  | `/api/users/password`      | Private | Update user password                                            |
+| POST   | `/api/users/refresh`       | Private | Proactively renew expiring JWT session (sliding window)         |
+| GET    | `/api/users`               | Admin   | Retrieve paginated system user directory                        |
 
 ### Campaign Management Routes (`/api/campaigns`)
 
