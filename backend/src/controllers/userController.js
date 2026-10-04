@@ -1,12 +1,15 @@
 const User = require("../models/User");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const {
   generateToken,
   generateVerificationToken,
 } = require("../utils/generateToken");
-const { sendVerificationEmail } = require("../services/emailService");
 const emailService = require("../services/emailService");
 
+// @desc    Register a new user account
+// @route   POST /api/users/register
+// @access  Public
 exports.registerUser = async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone, role } = req.body;
@@ -29,21 +32,27 @@ exports.registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const verificationToken = generateVerificationToken();
+    const verificationTokenHash = crypto
+      .createHash("sha256")
+      .update(verificationToken)
+      .digest("hex");
+    const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
 
     const user = await User.create({
       firstName,
       lastName,
       email: email.toLowerCase(),
       password: hashedPassword,
-      verificationTokenHash: verificationToken,
+      verificationTokenHash,
+      verificationTokenExpires,
+      isVerified: false,
       phone,
       role: "donor",
     });
 
-    
-    // 🚀 Send Welcome Email
+    // Send Welcome Email
     try {
-      await sendVerificationEmail(user, verificationToken);
+      await emailService.sendVerificationEmail(user, verificationToken);
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
     }
@@ -63,6 +72,7 @@ exports.registerUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        isVerified: user.isVerified,
       },
     });
   } catch (error) {
@@ -75,6 +85,58 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+// @desc    Verify user email via token
+// @route   GET /api/users/verify/:token
+// @access  Public
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is required",
+      });
+    }
+
+    // Hash the token passed in URL to compare with DB
+    const verificationTokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    // Find user by verification token and check that it hasn't expired
+    const user = await User.findOne({
+      verificationTokenHash,
+      verificationTokenExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token is invalid or has expired.",
+      });
+    }
+
+    // Mark verified and wipe one-time tokens
+    user.isVerified = true;
+    user.verificationTokenHash = undefined;
+    user.verificationTokenExpires = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Email successfully verified! You can now log in.",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Authenticate user & return JWT token
+// @route   POST /api/users/login
+// @access  Public
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -132,6 +194,7 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        isVerified: user.isVerified,
       },
     });
   } catch (error) {
@@ -145,6 +208,9 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+// @desc    Get currently authenticated user's profile
+// @route   GET /api/users/profile
+// @access  Private
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -169,6 +235,9 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+// @desc    Update currently authenticated user's profile
+// @route   PUT /api/users/profile
+// @access  Private
 exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, email } = req.body;
@@ -201,6 +270,7 @@ exports.updateProfile = async (req, res) => {
     emailService.sendProfileUpdateEmail(user).catch((err) => {
       console.error("Failed to send profile update alert:", err);
     });
+
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
@@ -221,6 +291,9 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Change currently authenticated user's password
+// @route   PUT /api/users/change-password
+// @access  Private
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -261,9 +334,11 @@ exports.changePassword = async (req, res) => {
 
     await user.save();
 
-    sendPasswordChangeEmail(user).catch((err) =>
-      console.error("Failed to send password change alert:", err),
-    );
+    emailService
+      .sendPasswordChangeEmail(user)
+      .catch((err) =>
+        console.error("Failed to send password change alert:", err),
+      );
     return res.status(200).json({
       success: true,
       message: "Password changed successfully",
@@ -306,7 +381,9 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
-// GET /api/users?page=1&limit=10  (admin only)
+// @desc    Get all users (Admin only)
+// @route   GET /api/users
+// @access  Private (Admin only)
 exports.getAllUsers = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -314,7 +391,9 @@ exports.getAllUsers = async (req, res) => {
 
     const [users, total] = await Promise.all([
       User.find()
-        .select("firstName lastName email phone role isActive lastLogin createdAt")
+        .select(
+          "firstName lastName email phone role isActive lastLogin createdAt",
+        )
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),

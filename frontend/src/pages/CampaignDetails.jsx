@@ -45,6 +45,7 @@ export default function CampaignDetails() {
   if (loading) return <div className="container" style={{ padding: '3rem' }}>Loading campaign...</div>;
   if (!campaign) return <div className="container"><ErrorBanner message="Campaign not found." /></div>;
 
+  const isCompleted = campaign.status === 'completed';
   const progress = Math.min(100, Math.round((campaign.raisedAmount / campaign.targetAmount) * 100));
 
   return (
@@ -69,23 +70,41 @@ export default function CampaignDetails() {
 
         <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
           <div className="progress-track" style={{ height: '12px' }}>
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+            <div 
+              className="progress-fill" 
+              style={{ 
+                width: `${progress}%`,
+                backgroundColor: isCompleted ? '#16a34a' : undefined 
+              }} 
+            />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.75rem 0 1.5rem' }}>
             <div>
-              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>${campaign.raisedAmount.toLocaleString()}</span>
-              <span style={{ color: 'var(--text-muted)' }}> raised of ${campaign.targetAmount.toLocaleString()}</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>₦{campaign.raisedAmount.toLocaleString()}</span>
+              <span style={{ color: 'var(--text-muted)' }}> raised of ₦{campaign.targetAmount.toLocaleString()}</span>
             </div>
-            <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{progress}% Funded</span>
+            <span style={{ fontWeight: 600, color: isCompleted ? '#16a34a' : 'var(--primary)' }}>
+              {progress}% Funded
+            </span>
           </div>
 
           <button 
-            className="btn btn-primary" 
-            style={{ width: '100%', padding: '0.9rem', fontSize: '1.1rem' }}
+            className="btn" 
+            style={{ 
+              width: '100%', 
+              padding: '0.9rem', 
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              cursor: isCompleted ? 'not-allowed' : 'pointer',
+              backgroundColor: isCompleted ? '#dcfce7' : 'var(--primary, #2563eb)',
+              color: isCompleted ? '#15803d' : '#ffffff',
+              border: isCompleted ? '1px solid #86efac' : 'none',
+              transition: 'background-color 0.2s ease',
+            }}
             onClick={handleDonateClick}
-            disabled={campaign.status === 'completed'}
+            disabled={isCompleted}
           >
-            {campaign.status === 'completed' ? 'Campaign Goal Met' : 'Donate to This Cause'}
+            {isCompleted ? '✓ Campaign Goal Met' : 'Donate to This Cause'}
           </button>
         </div>
       </div>
@@ -98,8 +117,8 @@ export default function CampaignDetails() {
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {donations.map((d) => (
               <li key={d._id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                <span>{d.anonymous ? 'Anonymous Supporter' : (d.donor?.firstName + ' ' + d.donor?.lastName) || 'Supporter'}</span>
-                <strong>${d.amount.toLocaleString()}</strong>
+                <span>{d.isAnonymous ? 'Anonymous Supporter' : (d.donor?.firstName + ' ' + d.donor?.lastName) || 'Supporter'}</span>
+                <strong>₦{d.amount.toLocaleString()}</strong>
               </li>
             ))}
           </ul>

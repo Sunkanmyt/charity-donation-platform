@@ -16,7 +16,7 @@ router.post("/", protect, createDonation);
 router.get("/my", protect, getMyDonations);
 
 // Admin-only routes
-router.get("/campaign/:campaignId", protect, authorize("admin"), getCampaignDonations);
+router.get("/campaign/:campaignId", protect, getCampaignDonations);
 router.get("/user/:userId", protect, authorize("admin"), getUserDonations);
 
 module.exports = router;

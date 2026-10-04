@@ -1,8 +1,6 @@
-
 const verifyAccountEmail = ({ firstName, verificationUrl }) => {
   return {
-    subject: "Verify Your Charity Donation Platform Account",
-
+    subject: "Verify Your Hope Share Platform Account",
     html: `
       <!DOCTYPE html>
       <html lang="en">
@@ -63,7 +61,7 @@ const verifyAccountEmail = ({ firstName, verificationUrl }) => {
                         color: #ffffff;
                         letter-spacing: -0.3px;
                       ">
-                        Charity Donation Platform
+                        Hope Share Platform
                       </div>
 
                       <div style="
@@ -131,7 +129,7 @@ const verifyAccountEmail = ({ firstName, verificationUrl }) => {
                       ">
                         Hi ${firstName}, welcome to
                         <strong style="color: #111827;">
-                          Charity Donation Platform
+                          Hope Share Platform
                         </strong>.
                       </p>
 
@@ -251,7 +249,7 @@ const verifyAccountEmail = ({ firstName, verificationUrl }) => {
                         line-height: 21px;
                         color: #9ca3af;
                       ">
-                        If you did not create an account with Charity Donation
+                        If you did not create an account with Hope Share
                         Platform, you can safely ignore this email.
                       </p>
 
@@ -281,7 +279,7 @@ const verifyAccountEmail = ({ firstName, verificationUrl }) => {
                         font-size: 11px;
                         color: #9ca3af;
                       ">
-                        © ${new Date().getFullYear()} Charity Donation Platform.
+                        © ${new Date().getFullYear()} Hope Share Platform.
                         All rights reserved.
                       </p>
                     </td>

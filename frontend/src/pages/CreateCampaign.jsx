@@ -120,7 +120,7 @@ export default function CreateCampaign() {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                Target Amount ($)
+                Target Amount (₦)
               </label>
               <input
                 type="number"
