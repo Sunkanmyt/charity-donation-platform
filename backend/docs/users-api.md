@@ -1,6 +1,274 @@
-# Users API (admin)
+# Users API
 
-## View all users (admin only)
+Base path: `/api/users`
+
+Every error uses the same basic shape:
+
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+Some 500 errors also include an `error` field with technical details.
+
+---
+
+## 1. Register
+
+**Endpoint:** `POST /api/users/register`
+
+**Purpose:** Creates a new account with the role `donor` and logs the user in straight away by returning a token.
+
+**Authentication:** None. Public.
+
+### Request body (JSON)
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `firstName` | string | Yes | |
+| `lastName` | string | Yes | |
+| `email` | string | Yes | Must not already be registered. Saved in lowercase. |
+| `password` | string | Yes | Stored securely hashed, never returned. |
+| `phone` | string | No | |
+
+### Example request
+
+```json
+{
+  "firstName": "Ada",
+  "lastName": "Obi",
+  "email": "ada@example.com",
+  "password": "MySecurePass123!",
+  "phone": "08012345678"
+}
+```
+
+### Successful response: 201 Created
+
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "token": "<jwt token>",
+  "user": {
+    "id": "64b7f0c2a1b2c3d4e5f60718",
+    "firstName": "Ada",
+    "lastName": "Obi",
+    "email": "ada@example.com",
+    "phone": "08012345678",
+    "role": "donor"
+  }
+}
+```
+
+### Error responses
+
+| Status | When it happens | `message` |
+|---|---|---|
+| 400 | A required field is missing | `First name, Last name, email and password required` |
+| 409 | The email is already registered | `User with this email already exists` |
+| 500 | Something unexpected broke on the server | `Registration failed` |
+
+---
+
+## 2. Login
+
+**Endpoint:** `POST /api/users/login`
+
+**Purpose:** Checks the email and password and returns a token. Send this token with later requests as `Authorization: Bearer <token>`. Tokens expire after 1 hour.
+
+**Authentication:** None. Public.
+
+### Request body (JSON)
+
+| Field | Type | Required |
+|---|---|---|
+| `email` | string | Yes |
+| `password` | string | Yes |
+
+### Example request
+
+```json
+{
+  "email": "ada@example.com",
+  "password": "MySecurePass123!"
+}
+```
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Login Successful",
+  "token": "<jwt token>",
+  "user": {
+    "id": "64b7f0c2a1b2c3d4e5f60718",
+    "firstName": "Ada",
+    "lastName": "Obi",
+    "email": "ada@example.com",
+    "phone": "08012345678",
+    "role": "donor"
+  }
+}
+```
+
+### Error responses
+
+| Status | When it happens | `message` |
+|---|---|---|
+| 400 | Email or password is missing | `Email and Password are Required` |
+| 401 | Email not found or password is wrong | `Invalid email or password` |
+| 403 | The account has been deactivated | `Your account has been deactivated` |
+| 500 | Something unexpected broke on the server | `Login failed` |
+
+---
+
+## 3. View my profile
+
+**Endpoint:** `GET /api/users/me`
+
+**Purpose:** Returns the details of the logged-in user. The password is never included.
+
+**Authentication:** Required. Send `Authorization: Bearer <token>`. Any logged-in user can call this.
+
+### Request body
+
+None.
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "user": {
+    "_id": "64b7f0c2a1b2c3d4e5f60718",
+    "firstName": "Ada",
+    "lastName": "Obi",
+    "email": "ada@example.com",
+    "phone": "08012345678",
+    "role": "donor",
+    "isVerified": false,
+    "isActive": true,
+    "lastLogin": "2026-09-21T14:07:03.713Z",
+    "createdAt": "2026-09-01T10:00:00.000Z",
+    "updatedAt": "2026-09-21T14:07:03.713Z"
+  }
+}
+```
+
+### Error responses
+
+| Status | When it happens | `message` |
+|---|---|---|
+| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
+| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
+| 404 | The user no longer exists | `User not found` |
+| 500 | Something unexpected broke on the server | `Failed to fetch profile` |
+
+---
+
+## 4. Update my profile
+
+**Endpoint:** `PATCH /api/users/profile`
+
+**Purpose:** Changes the logged-in user's details. Send only the fields you want to change. Fields you leave out stay as they are.
+
+**Authentication:** Required. Send `Authorization: Bearer <token>`.
+
+### Request body (JSON)
+
+| Field | Type | Required |
+|---|---|---|
+| `firstName` | string | No |
+| `lastName` | string | No |
+| `phone` | string | No |
+| `email` | string | No |
+
+### Example request
+
+```json
+{
+  "phone": "08099998888"
+}
+```
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "user": {
+    "id": "64b7f0c2a1b2c3d4e5f60718",
+    "firstName": "Ada",
+    "lastName": "Obi",
+    "email": "ada@example.com",
+    "phone": "08099998888",
+    "role": "donor"
+  }
+}
+```
+
+### Error responses
+
+| Status | When it happens | `message` |
+|---|---|---|
+| 401 | No token, or the token is fake or expired | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
+| 404 | The user no longer exists | `User not found` |
+| 500 | Something unexpected broke, for example the new email already belongs to someone else | `Failed to update profile` |
+
+---
+
+## 5. Change my password
+
+**Endpoint:** `PATCH /api/users/password`
+
+**Purpose:** Changes the logged-in user's password. The current password must be correct.
+
+**Authentication:** Required. Send `Authorization: Bearer <token>`.
+
+### Request body (JSON)
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `currentPassword` | string | Yes | Must match the existing password. |
+| `newPassword` | string | Yes | At least 6 characters. |
+
+### Example request
+
+```json
+{
+  "currentPassword": "MySecurePass123!",
+  "newPassword": "EvenBetterPass456!"
+}
+```
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+### Error responses
+
+| Status | When it happens | `message` |
+|---|---|---|
+| 400 | Either password is missing | `Current password and new password are required` |
+| 400 | The new password is shorter than 6 characters | `New password must be at least 6 characters` |
+| 401 | No token, or the token is fake or expired | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
+| 401 | The current password is wrong | `Current password is incorrect` |
+| 404 | The user no longer exists | `User not found` |
+| 500 | Something unexpected broke on the server | `Failed to change password` |
+
+---
+
+## 6. View all users (admin only)
 
 **Endpoint:** `GET /api/users`
 
