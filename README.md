@@ -1,4 +1,4 @@
-# Hope Share Platform 🤝
+# Hope Share Platform
 
 **Full-Stack Charity & Campaign Fundraising System**  
 _Technical Architecture, API Reference, and Deployment Guide_

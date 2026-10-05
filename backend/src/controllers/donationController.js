@@ -27,6 +27,7 @@ exports.createDonation = async (req, res) => {
         data: null,
       });
     }
+
     if (
       message !== undefined &&
       (typeof message !== "string" || message.length > 300)
@@ -44,6 +45,7 @@ exports.createDonation = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Campaign not found", data: null });
     }
+
     if (campaign.status !== "active") {
       return res.status(400).json({
         success: false,
@@ -52,7 +54,7 @@ exports.createDonation = async (req, res) => {
       });
     }
 
-    // Payment is simulated, so the donation is recorded as successful
+    // Record the donation in MongoDB
     const donation = await Donation.create({
       donor: req.user._id,
       campaign: campaignId,
@@ -66,19 +68,30 @@ exports.createDonation = async (req, res) => {
       $inc: { raisedAmount: numAmount },
     });
 
-    await emailService.sendDonationConfirmationEmail(
-      req.user,
-      campaign.title,
-      numAmount,
-      donation._id,
-      donation.createdAt,
-    );
+    // Send immediate HTTP 201 response to client so UI completes immediately
+    res.status(201).json({
+      success: true,
+      message: "Donation successful",
+      data: donation,
+    });
 
-    return res
-      .status(201)
-      .json({ success: true, message: "Donation successful", data: donation });
+    // Dispatch receipt email asynchronously in the background
+    emailService
+      .sendDonationConfirmationEmail(
+        req.user,
+        campaign.title,
+        numAmount,
+        donation._id,
+        donation.createdAt,
+      )
+      .catch((err) => {
+        console.error(
+          "Failed to send donation confirmation email:",
+          err.message,
+        );
+      });
   } catch (error) {
-    console.error(error);
+    console.error("Donation creation error:", error);
     return res
       .status(500)
       .json({ success: false, message: "Something went wrong", data: null });
@@ -110,7 +123,7 @@ exports.getMyDonations = async (req, res) => {
       data: { donations, page, totalPages: Math.ceil(total / limit), total },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get my donations error:", error);
     return res
       .status(500)
       .json({ success: false, message: "Something went wrong", data: null });
@@ -141,7 +154,6 @@ exports.getCampaignDonations = async (req, res) => {
       .populate("donor", "firstName lastName")
       .sort({ createdAt: -1 });
 
-    // Hide donor identity on anonymous donations
     const result = donations.map((d) => {
       const obj = d.toObject();
       if (obj.isAnonymous) obj.donor = null;
@@ -154,7 +166,7 @@ exports.getCampaignDonations = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get campaign donations error:", error);
     return res
       .status(500)
       .json({ success: false, message: "Something went wrong", data: null });
@@ -209,7 +221,7 @@ exports.getUserDonations = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get user donations error:", error);
     return res
       .status(500)
       .json({ success: false, message: "Something went wrong", data: null });
