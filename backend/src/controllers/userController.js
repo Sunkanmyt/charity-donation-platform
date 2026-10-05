@@ -6,6 +6,7 @@ const {
   generateVerificationToken,
 } = require("../utils/generateToken");
 const emailService = require("../services/emailService");
+const { uploadToCloudinary } = require("../config/cloudinary");
 
 // @desc    Register a new user account
 // @route   POST /api/users/register
@@ -68,6 +69,7 @@ exports.registerUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        profileImageUrl: user.profileImageUrl,
         isVerified: user.isVerified,
       },
     });
@@ -195,6 +197,7 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        profileImageUrl: user.profileImageUrl,
         isVerified: user.isVerified,
       },
     });
@@ -253,15 +256,19 @@ exports.updateProfile = async (req, res) => {
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = phone;
-    if (email !== undefined) user.email = email;
+
+    // If an image was uploaded, stream it to Cloudinary
+    if (req.file) {
+      const uploadedImageUrl = await uploadToCloudinary(
+        req.file.buffer,
+        "hope_share/profiles",
+      );
+      user.profileImageUrl = uploadedImageUrl;
+    }
 
     await user.save();
 
-    emailService.sendProfileUpdateEmail(user).catch((err) => {
-      console.error("Failed to send profile update alert:", err.message);
-    });
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       user: {
@@ -271,19 +278,25 @@ exports.updateProfile = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        profileImageUrl: user.profileImageUrl,
+        isVerified: user.isVerified,
       },
+    });
+
+    emailService.sendProfileUpdateEmail(user).catch((err) => {
+      console.error("Failed to send profile update alert:", err.message);
     });
   } catch (error) {
     console.error("Update profile error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to update profile",
+      message: error.message || "Failed to update profile",
     });
   }
 };
 
 // @desc    Change currently authenticated user's password
-// @route   PUT /api/users/change-password
+// @route   PUT /api/users/password
 // @access  Private
 exports.changePassword = async (req, res) => {
   try {
@@ -322,21 +335,22 @@ exports.changePassword = async (req, res) => {
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
+
     await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
 
     emailService.sendPasswordChangeEmail(user).catch((err) => {
       console.error("Failed to send password change alert:", err.message);
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Password changed successfully",
     });
   } catch (error) {
     console.error("Change password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to change password",
+      message: error.message || "Failed to change password",
     });
   }
 };
@@ -348,7 +362,7 @@ exports.refreshToken = async (req, res) => {
   try {
     const newToken = generateToken(req.user._id, req.user.role);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Token refreshed successfully",
       token: newToken,

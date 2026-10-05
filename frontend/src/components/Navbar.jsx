@@ -28,9 +28,41 @@ export default function Navbar() {
                   Admin Panel
                 </Link>
               )}
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                {user.firstName} {user.lastName} ({user.role})
-              </span>
+
+              {/* Profile Link with Avatar */}
+              <Link
+                to="/profile"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '6px',
+                }}
+              >
+                <img
+                  src={
+                    user.profileImageUrl || "/default-avatar.png"
+                  }
+                  alt={`${user.firstName}'s avatar`}
+                  style={{
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1px solid var(--border)',
+                  }}
+                />
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 500 }}>
+                  {user.firstName}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  ({user.role})
+                </span>
+              </Link>
+
               <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                 Sign Out
               </button>
