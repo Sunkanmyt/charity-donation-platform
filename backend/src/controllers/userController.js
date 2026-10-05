@@ -36,6 +36,8 @@ exports.registerUser = async (req, res) => {
       .createHash("sha256")
       .update(verificationToken)
       .digest("hex");
+
+    // Valid for 24 hours
     const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
 
     const user = await User.create({
@@ -50,17 +52,11 @@ exports.registerUser = async (req, res) => {
       role: "donor",
     });
 
-    // Send Welcome Email
-    try {
-      await emailService.sendVerificationEmail(user, verificationToken);
-    } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
-    }
-
-    // Pass the created user's ID and role to the JWT generator
+    // Pass created user's ID and role to JWT generator
     const token = generateToken(user._id, user.role);
 
-    return res.status(201).json({
+    // Respond to client immediately
+    res.status(201).json({
       success: true,
       message:
         "Registration successful. Please check your email to verify your account.",
@@ -75,6 +71,13 @@ exports.registerUser = async (req, res) => {
         isVerified: user.isVerified,
       },
     });
+
+    // Dispatch verification email non-blockingly
+    emailService
+      .sendVerificationEmail(user, verificationToken)
+      .catch((emailError) => {
+        console.error("Failed to send verification email:", emailError.message);
+      });
   } catch (error) {
     console.error("Registration error:", error);
     return res.status(500).json({
@@ -99,13 +102,11 @@ exports.verifyEmail = async (req, res) => {
       });
     }
 
-    // Hash the token passed in URL to compare with DB
     const verificationTokenHash = crypto
       .createHash("sha256")
       .update(token)
       .digest("hex");
 
-    // Find user by verification token and check that it hasn't expired
     const user = await User.findOne({
       verificationTokenHash,
       verificationTokenExpires: { $gt: Date.now() },
@@ -118,7 +119,6 @@ exports.verifyEmail = async (req, res) => {
       });
     }
 
-    // Mark verified and wipe one-time tokens
     user.isVerified = true;
     user.verificationTokenHash = undefined;
     user.verificationTokenExpires = undefined;
@@ -147,6 +147,7 @@ exports.loginUser = async (req, res) => {
         message: "Email and Password are Required",
       });
     }
+
     const user = await User.findOne({
       email: email.toLowerCase(),
     }).select("+password");
@@ -177,10 +178,10 @@ exports.loginUser = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    const token = generateToken(user);
+    const token = generateToken(user._id, user.role);
 
     emailService.sendLoginAlertEmail(user).catch((err) => {
-      console.error("Failed to send login alert:", err);
+      console.error("Failed to send login alert:", err.message);
     });
 
     return res.status(200).json({
@@ -199,7 +200,6 @@ exports.loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Login failed",
@@ -226,12 +226,12 @@ exports.getProfile = async (req, res) => {
       user,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Error fetching user:", error);
+    return res.status(500).json({
       error: "Internal Server Error",
       success: false,
       message: "Failed to fetch profile",
     });
-    console.error("Error fetching user:", error);
   }
 };
 
@@ -250,25 +250,15 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    if (firstName !== undefined) {
-      user.firstName = firstName;
-    }
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = phone;
+    if (email !== undefined) user.email = email;
 
-    if (lastName !== undefined) {
-      user.lastName = lastName;
-    }
-
-    if (phone !== undefined) {
-      user.phone = phone;
-    }
-
-    if (email !== undefined) {
-      user.email = email;
-    }
     await user.save();
 
     emailService.sendProfileUpdateEmail(user).catch((err) => {
-      console.error("Failed to send profile update alert:", err);
+      console.error("Failed to send profile update alert:", err.message);
     });
 
     return res.status(200).json({
@@ -284,7 +274,8 @@ exports.updateProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Update profile error:", error);
+    return res.status(500).json({
       success: false,
       message: "Failed to update profile",
     });
@@ -331,21 +322,18 @@ exports.changePassword = async (req, res) => {
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
-
     await user.save();
 
-    emailService
-      .sendPasswordChangeEmail(user)
-      .catch((err) =>
-        console.error("Failed to send password change alert:", err),
-      );
+    emailService.sendPasswordChangeEmail(user).catch((err) => {
+      console.error("Failed to send password change alert:", err.message);
+    });
+
     return res.status(200).json({
       success: true,
       message: "Password changed successfully",
     });
   } catch (error) {
     console.error("Change password error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to change password",
