@@ -1,5 +1,4 @@
 const Campaign = require("../models/Campaign");
-const Donation = require("../models/Donation");
 const { uploadToCloudinary } = require("../config/cloudinary");
 
 // @desc    Get all campaigns (with search, category filter & pagination)
@@ -8,11 +7,11 @@ const { uploadToCloudinary } = require("../config/cloudinary");
 exports.getCampaigns = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    // Cap limit between 1 and a maximum of 50 to prevent memory exhaustion
     const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 6), 50);
     const skip = (page - 1) * limit;
 
-    const query = {};
+    // Filter out soft-deleted campaigns ($ne: true covers existing docs without the field)
+    const query = { isDeleted: { $ne: true } };
 
     // Filter by category
     if (req.query.category && req.query.category !== "All") {
@@ -55,10 +54,10 @@ exports.getCampaigns = async (req, res) => {
 // @access  Public
 exports.getCampaignById = async (req, res) => {
   try {
-    const campaign = await Campaign.findById(req.params.id).populate(
-      "createdBy",
-      "firstName lastName email",
-    );
+    const campaign = await Campaign.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true },
+    }).populate("createdBy", "firstName lastName email");
 
     if (!campaign) {
       return res.status(404).json({
@@ -99,9 +98,11 @@ exports.createCampaign = async (req, res) => {
       });
     }
 
-    // If an image file was uploaded via form-data, send to Cloudinary
     if (req.file) {
-      imageUrl = await uploadToCloudinary(req.file.buffer, "charity_campaigns");
+      imageUrl = await uploadToCloudinary(
+        req.file.buffer,
+        "hope_share/campaigns",
+      );
     }
 
     const campaign = await Campaign.create({
@@ -109,8 +110,9 @@ exports.createCampaign = async (req, res) => {
       description,
       category,
       targetAmount: Number(targetAmount),
-      imageUrl: imageUrl || undefined, // Uses schema default if undefined
+      imageUrl: imageUrl || undefined,
       createdBy: req.user._id || req.user.id,
+      isDeleted: false,
     });
 
     res.status(201).json({
@@ -132,7 +134,10 @@ exports.createCampaign = async (req, res) => {
 // @access  Private (Admin only)
 exports.updateCampaign = async (req, res) => {
   try {
-    const campaign = await Campaign.findById(req.params.id);
+    const campaign = await Campaign.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true },
+    });
 
     if (!campaign) {
       return res.status(404).json({
@@ -144,11 +149,10 @@ exports.updateCampaign = async (req, res) => {
 
     const updateData = { ...req.body };
 
-    // If a new file is uploaded, update imageUrl with the new Cloudinary link
     if (req.file) {
       updateData.imageUrl = await uploadToCloudinary(
         req.file.buffer,
-        "charity_campaigns",
+        "hope_share/campaigns",
       );
     }
 
@@ -172,12 +176,15 @@ exports.updateCampaign = async (req, res) => {
   }
 };
 
-// @desc    Delete campaign & cascade delete associated donations
+// @desc    Soft delete campaign (Preserves financial donation history)
 // @route   DELETE /api/campaigns/:id
 // @access  Private (Admin only)
 exports.deleteCampaign = async (req, res) => {
   try {
-    const campaign = await Campaign.findById(req.params.id);
+    const campaign = await Campaign.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true },
+    });
 
     if (!campaign) {
       return res.status(404).json({
@@ -187,15 +194,15 @@ exports.deleteCampaign = async (req, res) => {
       });
     }
 
-    // Delete all donations linked to this campaign ID
-    await Donation.deleteMany({ campaign: req.params.id });
-
-    // Delete the campaign itself
-    await Campaign.findByIdAndDelete(req.params.id);
+    // Mark as deleted and mark completed so no new donations can be processed
+    campaign.isDeleted = true;
+    campaign.deletedAt = new Date();
+    campaign.status = "completed";
+    await campaign.save();
 
     res.status(200).json({
       success: true,
-      message: "Campaign and associated donations deleted successfully",
+      message: "Campaign deleted successfully",
       data: null,
     });
   } catch (error) {

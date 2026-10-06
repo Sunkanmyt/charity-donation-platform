@@ -39,11 +39,18 @@ exports.createDonation = async (req, res) => {
       });
     }
 
-    const campaign = await Campaign.findById(campaignId);
+    // Verify campaign exists and is NOT soft-deleted
+    const campaign = await Campaign.findOne({
+      _id: campaignId,
+      isDeleted: { $ne: true },
+    });
+
     if (!campaign) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Campaign not found", data: null });
+      return res.status(404).json({
+        success: false,
+        message: "Campaign not found",
+        data: null,
+      });
     }
 
     if (campaign.status !== "active") {
@@ -54,7 +61,7 @@ exports.createDonation = async (req, res) => {
       });
     }
 
-    // Record the donation in MongoDB
+    // Record donation in MongoDB
     const donation = await Donation.create({
       donor: req.user._id,
       campaign: campaignId,
@@ -64,11 +71,12 @@ exports.createDonation = async (req, res) => {
       status: "successful",
     });
 
+    // Increment raisedAmount atomically
     await Campaign.findByIdAndUpdate(campaignId, {
       $inc: { raisedAmount: numAmount },
     });
 
-    // Send immediate HTTP 201 response to client so UI completes immediately
+    // Return 201 immediately so frontend does not wait on external mail delivery
     res.status(201).json({
       success: true,
       message: "Donation successful",
@@ -92,41 +100,62 @@ exports.createDonation = async (req, res) => {
       });
   } catch (error) {
     console.error("Donation creation error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Something went wrong", data: null });
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: null,
+    });
   }
 };
 
-// @desc    Get donation history for the authenticated user
+// @desc    Get donation history and lifetime contribution for authenticated user
 // @route   GET /api/donations/my
 // @access  Private
 exports.getMyDonations = async (req, res) => {
   try {
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 10, 1),
+      50,
+    );
+    const skip = (page - 1) * limit;
 
     const filter = { donor: req.user._id };
 
-    const [donations, total] = await Promise.all([
+    // Run paginated query, total record count, and lifetime sum concurrently
+    const [donations, total, sumResult] = await Promise.all([
       Donation.find(filter)
-        .populate("campaign", "title")
+        .populate("campaign", "title isDeleted")
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
+        .skip(skip)
         .limit(limit),
       Donation.countDocuments(filter),
+      Donation.aggregate([
+        { $match: { donor: req.user._id, status: "successful" } },
+        { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      ]),
     ]);
+
+    const totalAmount = sumResult[0]?.totalAmount || 0;
 
     return res.status(200).json({
       success: true,
       message: "Donation history retrieved",
-      data: { donations, page, totalPages: Math.ceil(total / limit), total },
+      data: {
+        donations,
+        page,
+        totalPages: Math.ceil(total / limit) || 1,
+        total, // Total number of donations made
+        totalAmount, // True lifetime financial contribution in Naira
+      },
     });
   } catch (error) {
     console.error("Get my donations error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Something went wrong", data: null });
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: null,
+    });
   }
 };
 
@@ -138,16 +167,24 @@ exports.getCampaignDonations = async (req, res) => {
     const { campaignId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(campaignId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid campaign ID", data: null });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid campaign ID",
+        data: null,
+      });
     }
 
-    const campaign = await Campaign.findById(campaignId);
+    const campaign = await Campaign.findOne({
+      _id: campaignId,
+      isDeleted: { $ne: true },
+    });
+
     if (!campaign) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Campaign not found", data: null });
+      return res.status(404).json({
+        success: false,
+        message: "Campaign not found",
+        data: null,
+      });
     }
 
     const donations = await Donation.find({ campaign: campaignId })
@@ -167,9 +204,11 @@ exports.getCampaignDonations = async (req, res) => {
     });
   } catch (error) {
     console.error("Get campaign donations error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Something went wrong", data: null });
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: null,
+    });
   }
 };
 
@@ -181,33 +220,48 @@ exports.getUserDonations = async (req, res) => {
     const { userId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid user ID", data: null });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+        data: null,
+      });
     }
 
     const user = await User.findById(userId).select(
       "firstName lastName email role isActive",
     );
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found", data: null });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+        data: null,
+      });
     }
 
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 10, 1),
+      50,
+    );
+    const skip = (page - 1) * limit;
 
-    const filter = { donor: userId };
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const filter = { donor: userObjectId };
 
-    const [donations, total] = await Promise.all([
+    const [donations, total, sumResult] = await Promise.all([
       Donation.find(filter)
-        .populate("campaign", "title")
+        .populate("campaign", "title isDeleted")
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
+        .skip(skip)
         .limit(limit),
       Donation.countDocuments(filter),
+      Donation.aggregate([
+        { $match: { donor: userObjectId, status: "successful" } },
+        { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      ]),
     ]);
+
+    const totalAmount = sumResult[0]?.totalAmount || 0;
 
     return res.status(200).json({
       success: true,
@@ -216,14 +270,17 @@ exports.getUserDonations = async (req, res) => {
         user,
         donations,
         page,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit) || 1,
         total,
+        totalAmount,
       },
     });
   } catch (error) {
     console.error("Get user donations error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Something went wrong", data: null });
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      data: null,
+    });
   }
 };

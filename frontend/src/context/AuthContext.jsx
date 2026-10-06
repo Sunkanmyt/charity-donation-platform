@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await api.get('/users/me');
+        const response = await api.get('/users/profile');
         setUser(response.user);
       } catch (err) {
         localStorage.removeItem('token');
@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin: user?.role === 'admin' }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, register, logout, isAdmin: user?.role === 'admin' }}>
       {children}
     </AuthContext.Provider>
   );

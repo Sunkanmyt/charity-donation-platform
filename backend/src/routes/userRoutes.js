@@ -14,6 +14,7 @@ const {
 
 const protect = require("../middlewares/auth");
 const authorize = require("../middlewares/role");
+const upload = require("../middlewares/upload");
 
 // Public routes
 router.post("/register", registerUser);
@@ -21,9 +22,9 @@ router.get("/verify/:token", verifyEmail);
 router.post("/login", loginUser);
 
 // Protected routes
-router.get("/me", protect, getProfile);
-router.patch("/profile", protect, updateProfile);
-router.patch("/password", protect, changePassword);
+router.get("/profile", protect, getProfile);
+router.put("/profile", protect, upload.single("profileImage"), updateProfile);
+router.put("/password", protect, changePassword);
 router.post("/refresh", protect, refreshToken);
 
 // Admin-only routes

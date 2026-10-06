@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyEmail from './pages/VerifyEmail';
+import ProfilePage from "./pages/ProfilePage";
 import CampaignDetails from './pages/CampaignDetails';
 import UserDonations from './pages/UserDonations';
 import AdminUsers from './pages/AdminUsers';
@@ -31,6 +32,7 @@ export default function App() {
             {/* Authenticated Donor Routes */}
             <Route element={<ProtectedRoute allowedRoles={['donor', 'admin']} />}>
               <Route path="/my-donations" element={<UserDonations />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
 
             {/* Admin-Only Routes */}

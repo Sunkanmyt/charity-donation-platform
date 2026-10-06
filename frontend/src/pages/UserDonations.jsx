@@ -5,6 +5,7 @@ import EmptyState from '../components/EmptyState';
 
 export default function UserDonations() {
   const [donations, setDonations] = useState([]);
+  const [lifetimeTotal, setLifetimeTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -12,9 +13,18 @@ export default function UserDonations() {
     const fetchMyDonations = async () => {
       try {
         const res = await api.get('/donations/my');
-        setDonations(res?.data?.donations || []);
+        // Handles both unwrapped interceptor data and standard axios res.data
+        const data = res?.data?.data || res?.data || {};
+        
+        setDonations(data.donations || []);
+        // Uses true database lifetime sum, falling back to page reduce if undefined
+        setLifetimeTotal(
+          data.totalAmount !== undefined
+            ? data.totalAmount
+            : (data.donations || []).reduce((sum, d) => sum + (d.amount || 0), 0)
+        );
       } catch (err) {
-        setError(err.message || 'Unable to retrieve donation history.');
+        setError(err.response?.data?.message || err.message || 'Unable to retrieve donation history.');
       } finally {
         setLoading(false);
       }
@@ -22,26 +32,53 @@ export default function UserDonations() {
     fetchMyDonations();
   }, []);
 
-  const totalGiven = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
-
   return (
     <div className="container">
       <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>My Giving History</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>View all contributions linked to your profile.</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+        View all contributions linked to your profile.
+      </p>
 
       <ErrorBanner message={error} onClose={() => setError('')} />
 
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'inline-block', minWidth: '240px' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Impact</span>
-        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.25rem' }}>
-          ₦{totalGiven.toLocaleString()}
+      <div
+        className="card"
+        style={{
+          padding: '1.5rem',
+          marginBottom: '2rem',
+          display: 'inline-block',
+          minWidth: '240px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '0.85rem',
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}
+        >
+          Total Impact
+        </span>
+        <div
+          style={{
+            fontSize: '2rem',
+            fontWeight: 800,
+            color: 'var(--primary)',
+            marginTop: '0.25rem',
+          }}
+        >
+          ₦{lifetimeTotal.toLocaleString()}
         </div>
       </div>
 
       {loading ? (
         <p>Loading donation records...</p>
       ) : donations.length === 0 ? (
-        <EmptyState title="No donations recorded" description="Explore active campaigns and make your first simulated contribution." />
+        <EmptyState
+          title="No donations recorded"
+          description="Explore active campaigns and make your first simulated contribution."
+        />
       ) : (
         <div className="card" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -54,18 +91,50 @@ export default function UserDonations() {
               </tr>
             </thead>
             <tbody>
-              {donations.map((d) => (
-                <tr key={d._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '1rem', fontWeight: 500 }}>{d.campaign?.title || 'Unknown Campaign'}</td>
-                  <td style={{ padding: '1rem' }}>₦{d.amount.toLocaleString()}</td>
-                  <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{new Date(d.createdAt).toLocaleDateString()}</td>
-                  <td style={{ padding: '1rem' }}>
-                    <span className="badge" style={{ background: d.isAnonymous ? '#fee2e2' : '#e0e7ff', color: d.isAnonymous ? '#991b1b' : '#3730a3' }}>
-                      {d.isAnonymous ? 'Anonymous' : 'Public'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {donations.map((d) => {
+                const isArchived = d.campaign?.isDeleted;
+                const campaignTitle = d.campaign?.title || 'Archived Campaign';
+
+                return (
+                  <tr key={d._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '1rem', fontWeight: 500 }}>
+                      {campaignTitle}
+                      {isArchived && (
+                        <span
+                          style={{
+                            marginLeft: '0.5rem',
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          (Archived)
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 600 }}>
+                      ₦{d.amount?.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
+                      {new Date(d.createdAt).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <span
+                        className="badge"
+                        style={{
+                          background: d.isAnonymous ? '#fee2e2' : '#e0e7ff',
+                          color: d.isAnonymous ? '#991b1b' : '#3730a3',
+                          padding: '0.25rem 0.6rem',
+                          borderRadius: '4px',
+                          fontSize: '0.8rem',
+                        }}
+                      >
+                        {d.isAnonymous ? 'Anonymous' : 'Public'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
