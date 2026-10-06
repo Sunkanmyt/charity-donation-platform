@@ -14,10 +14,11 @@ export default function AdminDashboard() {
 
   const fetchCampaigns = async () => {
     try {
-      const res = await api.get('/campaigns?limit=100');
-      setCampaigns(res.data.campaigns || res.data || []);
+      const res = await api.get('/campaigns?limit=50');
+      const data = res?.data?.data || res?.data || {};
+      setCampaigns(data.campaigns || (Array.isArray(data) ? data : []));
     } catch (err) {
-      setError(err.message || 'Error loading administrative records.');
+      setError(err.response?.data?.message || err.message || 'Error loading administrative records.');
     } finally {
       setLoading(false);
     }
@@ -33,10 +34,11 @@ export default function AdminDashboard() {
 
     try {
       await api.delete(`/campaigns/${campaignToDelete._id}`);
+      // Remove from the dashboard list immediately
       setCampaigns((prev) => prev.filter((c) => c._id !== campaignToDelete._id));
       setCampaignToDelete(null);
     } catch (err) {
-      setError(err.message || 'Failed to delete campaign.');
+      setError(err.response?.data?.message || err.message || 'Failed to archive campaign.');
     } finally {
       setDeleting(false);
     }
@@ -47,13 +49,21 @@ export default function AdminDashboard() {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '2rem',
+        }}
+      >
         <div>
           <h1 style={{ fontSize: '1.75rem' }}>Admin Control Center</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Manage platform campaigns and verify fundraising activity.</p>
+          <p style={{ color: 'var(--text-muted)' }}>
+            Manage platform campaigns and verify fundraising activity.
+          </p>
         </div>
 
-        {/* Buttons group */}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <Link to="/admin/users" className="btn btn-outline">
             Manage Users
@@ -66,18 +76,37 @@ export default function AdminDashboard() {
 
       <ErrorBanner message={error} onClose={() => setError('')} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem',
+          marginBottom: '2rem',
+        }}
+      >
         <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>TOTAL FUNDS RAISED</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>₦{totalFunds.toLocaleString()}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            TOTAL FUNDS RAISED
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
+            ₦{totalFunds.toLocaleString()}
+          </div>
         </div>
         <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>ACTIVE CAMPAIGNS</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>{activeCount}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            ACTIVE CAMPAIGNS
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
+            {activeCount}
+          </div>
         </div>
         <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>TOTAL CAMPAIGNS</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>{campaigns.length}</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            TOTAL CAMPAIGNS
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
+            {campaigns.length}
+          </div>
         </div>
       </div>
 
@@ -108,16 +137,16 @@ export default function AdminDashboard() {
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <Link 
-                        to={`/admin/campaigns/${c._id}/edit`} 
-                        className="btn btn-outline" 
+                      <Link
+                        to={`/admin/campaigns/${c._id}/edit`}
+                        className="btn btn-outline"
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', textDecoration: 'none' }}
                       >
                         Edit
                       </Link>
-                      <button 
-                        onClick={() => setCampaignToDelete(c)} 
-                        className="btn btn-danger" 
+                      <button
+                        onClick={() => setCampaignToDelete(c)}
+                        className="btn btn-danger"
                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                       >
                         Delete
@@ -131,7 +160,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete/Archive Confirmation Modal */}
       {campaignToDelete && (
         <div
           style={{
@@ -146,10 +175,25 @@ export default function AdminDashboard() {
             padding: '1rem',
           }}
         >
-          <div className="card" style={{ maxWidth: '420px', width: '100%', padding: '1.75rem', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Delete Campaign</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-              Are you sure you want to permanently delete <strong>"{campaignToDelete.title}"</strong>? This action cannot be reversed.
+          <div
+            className="card"
+            style={{
+              maxWidth: '440px',
+              width: '100%',
+              padding: '1.75rem',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            }}
+          >
+            <h3 style={{ marginBottom: '0.5rem' }}>Archive Campaign</h3>
+            <p
+              style={{
+                color: 'var(--text-muted)',
+                fontSize: '0.9rem',
+                marginBottom: '1.5rem',
+                lineHeight: 1.5,
+              }}
+            >
+              Are you sure you want to remove <strong>"{campaignToDelete.title}"</strong> from public listings? All past donor receipts and donation contribution histories will remain safely preserved in audit records.
             </p>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -167,7 +211,7 @@ export default function AdminDashboard() {
                 disabled={deleting}
                 onClick={confirmDelete}
               >
-                {deleting ? 'Deleting...' : 'Confirm Delete'}
+                {deleting ? 'Removing...' : 'Confirm Remove'}
               </button>
             </div>
           </div>
