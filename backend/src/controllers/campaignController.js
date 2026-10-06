@@ -101,7 +101,10 @@ exports.createCampaign = async (req, res) => {
 
     // If an image file was uploaded via form-data, send to Cloudinary
     if (req.file) {
-      imageUrl = await uploadToCloudinary(req.file.buffer, "charity_campaigns");
+      imageUrl = await uploadToCloudinary(
+        req.file.buffer,
+        "hope_share/campaigns",
+      );
     }
 
     const campaign = await Campaign.create({
@@ -148,7 +151,7 @@ exports.updateCampaign = async (req, res) => {
     if (req.file) {
       updateData.imageUrl = await uploadToCloudinary(
         req.file.buffer,
-        "charity_campaigns",
+        "hope_share/campaigns",
       );
     }
 

@@ -25,13 +25,13 @@ Some 500 errors also include an `error` field with technical details.
 
 ### Request body (JSON)
 
-| Field | Type | Required | Rules |
-|---|---|---|---|
-| `firstName` | string | Yes | |
-| `lastName` | string | Yes | |
-| `email` | string | Yes | Must not already be registered. Saved in lowercase. |
-| `password` | string | Yes | Stored securely hashed, never returned. |
-| `phone` | string | No | |
+| Field       | Type   | Required | Rules                                               |
+| ----------- | ------ | -------- | --------------------------------------------------- |
+| `firstName` | string | Yes      |                                                     |
+| `lastName`  | string | Yes      |                                                     |
+| `email`     | string | Yes      | Must not already be registered. Saved in lowercase. |
+| `password`  | string | Yes      | Stored securely hashed, never returned.             |
+| `phone`     | string | No       |                                                     |
 
 ### Example request
 
@@ -65,11 +65,11 @@ Some 500 errors also include an `error` field with technical details.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 400 | A required field is missing | `First name, Last name, email and password required` |
-| 409 | The email is already registered | `User with this email already exists` |
-| 500 | Something unexpected broke on the server | `Registration failed` |
+| Status | When it happens                          | `message`                                            |
+| ------ | ---------------------------------------- | ---------------------------------------------------- |
+| 400    | A required field is missing              | `First name, Last name, email and password required` |
+| 409    | The email is already registered          | `User with this email already exists`                |
+| 500    | Something unexpected broke on the server | `Registration failed`                                |
 
 ---
 
@@ -83,10 +83,10 @@ Some 500 errors also include an `error` field with technical details.
 
 ### Request body (JSON)
 
-| Field | Type | Required |
-|---|---|---|
-| `email` | string | Yes |
-| `password` | string | Yes |
+| Field      | Type   | Required |
+| ---------- | ------ | -------- |
+| `email`    | string | Yes      |
+| `password` | string | Yes      |
 
 ### Example request
 
@@ -117,18 +117,18 @@ Some 500 errors also include an `error` field with technical details.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 400 | Email or password is missing | `Email and Password are Required` |
-| 401 | Email not found or password is wrong | `Invalid email or password` |
-| 403 | The account has been deactivated | `Your account has been deactivated` |
-| 500 | Something unexpected broke on the server | `Login failed` |
+| Status | When it happens                          | `message`                           |
+| ------ | ---------------------------------------- | ----------------------------------- |
+| 400    | Email or password is missing             | `Email and Password are Required`   |
+| 401    | Email not found or password is wrong     | `Invalid email or password`         |
+| 403    | The account has been deactivated         | `Your account has been deactivated` |
+| 500    | Something unexpected broke on the server | `Login failed`                      |
 
 ---
 
 ## 3. View my profile
 
-**Endpoint:** `GET /api/users/me`
+**Endpoint:** `GET /api/users/profile`
 
 **Purpose:** Returns the details of the logged-in user. The password is never included.
 
@@ -161,12 +161,12 @@ None.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
-| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
-| 404 | The user no longer exists | `User not found` |
-| 500 | Something unexpected broke on the server | `Failed to fetch profile` |
+| Status | When it happens                          | `message`                                                 |
+| ------ | ---------------------------------------- | --------------------------------------------------------- |
+| 401    | No token was sent                        | `Not authorized to access this route. No token provided.` |
+| 401    | The token is fake or expired             | `Not authorized. Invalid or expired token.`               |
+| 404    | The user no longer exists                | `User not found`                                          |
+| 500    | Something unexpected broke on the server | `Failed to fetch profile`                                 |
 
 ---
 
@@ -180,12 +180,12 @@ None.
 
 ### Request body (JSON)
 
-| Field | Type | Required |
-|---|---|---|
-| `firstName` | string | No |
-| `lastName` | string | No |
-| `phone` | string | No |
-| `email` | string | No |
+| Field       | Type   | Required |
+| ----------- | ------ | -------- |
+| `firstName` | string | No       |
+| `lastName`  | string | No       |
+| `phone`     | string | No       |
+| `email`     | string | No       |
 
 ### Example request
 
@@ -214,11 +214,11 @@ None.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 401 | No token, or the token is fake or expired | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
-| 404 | The user no longer exists | `User not found` |
-| 500 | Something unexpected broke, for example the new email already belongs to someone else | `Failed to update profile` |
+| Status | When it happens                                                                       | `message`                                                                                                |
+| ------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 401    | No token, or the token is fake or expired                                             | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
+| 404    | The user no longer exists                                                             | `User not found`                                                                                         |
+| 500    | Something unexpected broke, for example the new email already belongs to someone else | `Failed to update profile`                                                                               |
 
 ---
 
@@ -232,10 +232,10 @@ None.
 
 ### Request body (JSON)
 
-| Field | Type | Required | Rules |
-|---|---|---|---|
-| `currentPassword` | string | Yes | Must match the existing password. |
-| `newPassword` | string | Yes | At least 6 characters. |
+| Field             | Type   | Required | Rules                             |
+| ----------------- | ------ | -------- | --------------------------------- |
+| `currentPassword` | string | Yes      | Must match the existing password. |
+| `newPassword`     | string | Yes      | At least 6 characters.            |
 
 ### Example request
 
@@ -257,14 +257,14 @@ None.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 400 | Either password is missing | `Current password and new password are required` |
-| 400 | The new password is shorter than 6 characters | `New password must be at least 6 characters` |
-| 401 | No token, or the token is fake or expired | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
-| 401 | The current password is wrong | `Current password is incorrect` |
-| 404 | The user no longer exists | `User not found` |
-| 500 | Something unexpected broke on the server | `Failed to change password` |
+| Status | When it happens                               | `message`                                                                                                |
+| ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 400    | Either password is missing                    | `Current password and new password are required`                                                         |
+| 400    | The new password is shorter than 6 characters | `New password must be at least 6 characters`                                                             |
+| 401    | No token, or the token is fake or expired     | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
+| 401    | The current password is wrong                 | `Current password is incorrect`                                                                          |
+| 404    | The user no longer exists                     | `User not found`                                                                                         |
+| 500    | Something unexpected broke on the server      | `Failed to change password`                                                                              |
 
 ---
 
@@ -286,10 +286,10 @@ None. This is a GET request, so nothing is sent in the body.
 
 ### Parameters (query string)
 
-| Parameter | Type | Required | Default | Rules |
-|---|---|---|---|---|
-| `page` | number | No | `1` | Anything below 1 or not a number becomes `1`. |
-| `limit` | number | No | `10` | Minimum 1, maximum 50. Bigger values are reduced to 50. |
+| Parameter | Type   | Required | Default | Rules                                                   |
+| --------- | ------ | -------- | ------- | ------------------------------------------------------- |
+| `page`    | number | No       | `1`     | Anything below 1 or not a number becomes `1`.           |
+| `limit`   | number | No       | `10`    | Minimum 1, maximum 50. Bigger values are reduced to 50. |
 
 ### Example request
 
@@ -328,9 +328,9 @@ Notes on the response:
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
-| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
-| 403 | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
-| 500 | Something unexpected broke on the server | `Failed to fetch users` |
+| Status | When it happens                           | `message`                                                                |
+| ------ | ----------------------------------------- | ------------------------------------------------------------------------ |
+| 401    | No token was sent                         | `Not authorized to access this route. No token provided.`                |
+| 401    | The token is fake or expired              | `Not authorized. Invalid or expired token.`                              |
+| 403    | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
+| 500    | Something unexpected broke on the server  | `Failed to fetch users`                                                  |
