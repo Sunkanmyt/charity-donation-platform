@@ -1,10 +1,24 @@
 # Donations API
 
+Base path: `/api/donations`
+
+Every error uses the same shape:
+
+```json
+{
+  "success": false,
+  "message": "Campaign not found",
+  "data": null
+}
+```
+
+---
+
 ## 1. Make a donation
 
 **Endpoint:** `POST /api/donations`
 
-**Purpose:** Records a donation from the logged-in user to a campaign and adds the amount to the campaign's `raisedAmount`. Payment is simulated, so every valid donation is saved with the status `successful`.
+**Purpose:** Records a donation from the logged-in user to a campaign and adds the amount to the campaign's `raisedAmount`. Payment is simulated, so every valid donation is saved with the status `successful`. A receipt email is then sent to the donor through Brevo. If the email fails, the donation still succeeds and the response is unchanged.
 
 **Authentication:** Required. Send the login token in the request header:
 
@@ -14,12 +28,12 @@ Any logged-in user (donor or admin) can donate.
 
 ### Request body (JSON)
 
-| Field         | Type    | Required | Rules                                                                   |
-| ------------- | ------- | -------- | ----------------------------------------------------------------------- |
-| `campaignId`  | string  | Yes      | Must be a valid ID of an existing, active campaign                      |
-| `amount`      | number  | Yes      | Must be a number, at least 1                                            |
-| `isAnonymous` | boolean | No       | Defaults to `false`. If `true`, the donor's name is hidden from admins. |
-| `message`     | string  | No       | Maximum 300 characters                                                  |
+| Field         | Type    | Required | Rules                                                                        |
+| ------------- | ------- | -------- | ---------------------------------------------------------------------------- |
+| `campaignId`  | string  | Yes      | Must be a valid ID of an existing, active campaign that has not been deleted |
+| `amount`      | number  | Yes      | Must be a number, at least 1                                                 |
+| `isAnonymous` | boolean | No       | Defaults to `false`. If `true`, the donor's name is hidden from admins.      |
+| `message`     | string  | No       | Maximum 300 characters                                                       |
 
 ### Parameters
 
@@ -58,27 +72,16 @@ None. This endpoint has no URL parameters or query strings.
 
 ### Error responses
 
-| Status | When it happens                                         | `message`                                                 |
-| ------ | ------------------------------------------------------- | --------------------------------------------------------- |
-| 400    | `campaignId` is missing or not a valid ID               | `A valid campaign ID is required`                         |
-| 400    | `amount` is missing, not a number, or below 1           | `Amount must be at least 1`                               |
-| 400    | `message` is not text, or is longer than 300 characters | `Message must be text of 300 characters or fewer`         |
-| 400    | The campaign exists but is not active                   | `This campaign is not accepting donations`                |
-| 401    | No token was sent                                       | `Not authorized to access this route. No token provided.` |
-| 401    | The token is fake or expired                            | `Not authorized. Invalid or expired token.`               |
-| 404    | No campaign has that ID                                 | `Campaign not found`                                      |
-| 500    | Something unexpected broke on the server                | `Something went wrong`                                    |
-
-Every error uses the same shape:
-
-````json
-{
-  "success": false,
-  "message": "Campaign not found",
-  "data": null
-}
-
-
+| Status | When it happens                                           | `message`                                                 |
+| ------ | --------------------------------------------------------- | --------------------------------------------------------- |
+| 400    | `campaignId` is missing or not a valid ID                 | `A valid campaign ID is required`                         |
+| 400    | `amount` is missing, not a number, or below 1             | `Amount must be at least 1`                               |
+| 400    | `message` is not text, or is longer than 300 characters   | `Message must be text of 300 characters or fewer`         |
+| 400    | The campaign exists but is not active                     | `This campaign is not accepting donations`                |
+| 401    | No token was sent                                         | `Not authorized to access this route. No token provided.` |
+| 401    | The token is fake or expired                              | `Not authorized. Invalid or expired token.`               |
+| 404    | No campaign has that ID, or the campaign has been deleted | `Campaign not found`                                      |
+| 500    | Something unexpected broke on the server                  | `Something went wrong`                                    |
 
 ---
 
@@ -86,7 +89,7 @@ Every error uses the same shape:
 
 **Endpoint:** `GET /api/donations/my`
 
-**Purpose:** Returns the donations made by the logged-in user, newest first. Each donation shows the title of the campaign it went to. Results come in pages, so a donor with many donations receives them in small batches.
+**Purpose:** Returns the donations made by the logged-in user, newest first. Each donation shows the title of the campaign it went to. Results come in pages, so a donor with many donations receives them in small batches. The response also includes `totalAmount`, the user's lifetime total across all their donations.
 
 **Authentication:** Required. Send the login token in the request header:
 
@@ -100,10 +103,10 @@ None. This is a GET request, so nothing is sent in the body.
 
 ### Parameters (query string)
 
-| Parameter | Type | Required | Default | Rules |
-|---|---|---|---|---|
-| `page` | number | No | `1` | Which page to return. Anything below 1 or not a number becomes `1`. |
-| `limit` | number | No | `10` | How many donations per page. Minimum 1, maximum 50. Bigger values are reduced to 50. |
+| Parameter | Type   | Required | Default | Rules                                                                                |
+| --------- | ------ | -------- | ------- | ------------------------------------------------------------------------------------ |
+| `page`    | number | No       | `1`     | Which page to return. Anything below 1 or not a number becomes `1`.                  |
+| `limit`   | number | No       | `10`    | How many donations per page. Minimum 1, maximum 50. Bigger values are reduced to 50. |
 
 ### Example request
 
@@ -122,7 +125,8 @@ None. This is a GET request, so nothing is sent in the body.
         "donor": "64b7f0c2a1b2c3d4e5f60718",
         "campaign": {
           "_id": "6ab1390f98f8da19b8b3143e",
-          "title": "Help Build a School"
+          "title": "Help Build a School",
+          "isDeleted": false
         },
         "amount": 2000,
         "status": "successful",
@@ -134,19 +138,23 @@ None. This is a GET request, so nothing is sent in the body.
     ],
     "page": 1,
     "totalPages": 1,
-    "total": 2
+    "total": 1,
+    "totalAmount": 2000
   }
 }
-````
+```
 
-| Field in `data` | Meaning                                        |
-| --------------- | ---------------------------------------------- |
-| `donations`     | The donations on this page, newest first       |
-| `page`          | The page number returned                       |
-| `totalPages`    | How many pages exist in total                  |
-| `total`         | How many donations this user has made in total |
+| Field in `data` | Meaning                                                          |
+| --------------- | ---------------------------------------------------------------- |
+| `donations`     | The donations on this page, newest first                         |
+| `page`          | The page number returned                                         |
+| `totalPages`    | How many pages exist in total                                    |
+| `total`         | How many donations this user has made in total                   |
+| `totalAmount`   | The lifetime sum of all this user's donations, across every page |
 
 If the user has made no donations yet, the request still succeeds, with `"donations": []` and `"total": 0`.
+
+Donations to a campaign that has since been deleted (archived) stay in the history and in `totalAmount`. Their campaign object has `"isDeleted": true`.
 
 ### Error responses
 
@@ -156,29 +164,19 @@ If the user has made no donations yet, the request still succeeds, with `"donati
 | 401    | The token is fake or expired             | `Not authorized. Invalid or expired token.`               |
 | 500    | Something unexpected broke on the server | `Something went wrong`                                    |
 
-Every error uses the same shape:
-
-````json
-{
-  "success": false,
-  "message": "Not authorized. Invalid or expired token.",
-  "data": null
-}
-
-
 ---
 
-## 3. View a campaign's donations (admin only)
+## 3. View a campaign's donations
 
 **Endpoint:** `GET /api/donations/campaign/:campaignId`
 
-**Purpose:** Returns every donation made to one campaign, newest first, so an admin can see who has donated and how much. Donors who chose to be anonymous appear with `"donor": null`, so their identity is never revealed.
+**Purpose:** Returns every donation made to one campaign, newest first, so logged-in users can see who has donated and how much. Donors who chose to be anonymous appear with `"donor": null`, so their identity is never revealed.
 
 **Authentication:** Required. Send the login token in the request header:
 
 `Authorization: Bearer <token>`
 
-**Authorization:** Admin only. Users with the role `donor` receive a 403 error.
+Any logged-in user (donor or admin) can call this.
 
 ### Request body
 
@@ -186,9 +184,9 @@ None. This is a GET request, so nothing is sent in the body.
 
 ### Parameters (URL)
 
-| Parameter | Type | Required | Rules |
-|---|---|---|---|
-| `campaignId` | string | Yes | Part of the address. Must be a valid ID of an existing campaign. |
+| Parameter    | Type   | Required | Rules                                                            |
+| ------------ | ------ | -------- | ---------------------------------------------------------------- |
+| `campaignId` | string | Yes      | Part of the address. Must be a valid ID of an existing campaign. |
 
 ### Example request
 
@@ -228,7 +226,7 @@ None. This is a GET request, so nothing is sent in the body.
     }
   ]
 }
-````
+```
 
 Notes on the response:
 
@@ -239,31 +237,21 @@ Notes on the response:
 
 ### Error responses
 
-| Status | When it happens                           | `message`                                                                |
-| ------ | ----------------------------------------- | ------------------------------------------------------------------------ |
-| 400    | `campaignId` is not a valid ID            | `Invalid campaign ID`                                                    |
-| 401    | No token was sent                         | `Not authorized to access this route. No token provided.`                |
-| 401    | The token is fake or expired              | `Not authorized. Invalid or expired token.`                              |
-| 403    | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
-| 404    | No campaign has that ID                   | `Campaign not found`                                                     |
-| 500    | Something unexpected broke on the server  | `Something went wrong`                                                   |
+| Status | When it happens                                           | `message`                                                 |
+| ------ | --------------------------------------------------------- | --------------------------------------------------------- |
+| 400    | `campaignId` is not a valid ID                            | `Invalid campaign ID`                                     |
+| 401    | No token was sent                                         | `Not authorized to access this route. No token provided.` |
+| 401    | The token is fake or expired                              | `Not authorized. Invalid or expired token.`               |
+| 404    | No campaign has that ID, or the campaign has been deleted | `Campaign not found`                                      |
+| 500    | Something unexpected broke on the server                  | `Something went wrong`                                    |
 
-Every error uses the same shape:
-
-```json
-{
-  "success": false,
-  "message": "Campaign not found",
-  "data": null
-}
-```
 ---
 
 ## 4. View a user's donation history (admin only)
 
 **Endpoint:** `GET /api/donations/user/:userId`
 
-**Purpose:** Returns one user's basic details and their donation history, newest first, so an admin can see everything a particular donor has given. Each donation shows the title of the campaign it went to. Results come in pages.
+**Purpose:** Returns one user's basic details and their donation history, newest first, so an admin can see everything a particular donor has given. Each donation shows the title of the campaign it went to. The response also includes `totalAmount`, the user's lifetime total. Results come in pages.
 
 **Authentication:** Required. Send the login token in the request header:
 
@@ -279,16 +267,16 @@ None. This is a GET request, so nothing is sent in the body.
 
 URL:
 
-| Parameter | Type | Required | Rules |
-|---|---|---|---|
-| `userId` | string | Yes | Must be a valid ID of an existing user. |
+| Parameter | Type   | Required | Rules                                   |
+| --------- | ------ | -------- | --------------------------------------- |
+| `userId`  | string | Yes      | Must be a valid ID of an existing user. |
 
 Query string:
 
-| Parameter | Type | Required | Default | Rules |
-|---|---|---|---|---|
-| `page` | number | No | `1` | Anything below 1 or not a number becomes `1`. |
-| `limit` | number | No | `10` | Minimum 1, maximum 50. Bigger values are reduced to 50. |
+| Parameter | Type   | Required | Default | Rules                                                   |
+| --------- | ------ | -------- | ------- | ------------------------------------------------------- |
+| `page`    | number | No       | `1`     | Anything below 1 or not a number becomes `1`.           |
+| `limit`   | number | No       | `10`    | Minimum 1, maximum 50. Bigger values are reduced to 50. |
 
 ### Example request
 
@@ -315,7 +303,8 @@ Query string:
         "donor": "64b7f0c2a1b2c3d4e5f60718",
         "campaign": {
           "_id": "6ab1390f98f8da19b8b3143e",
-          "title": "Help Build a School"
+          "title": "Help Build a School",
+          "isDeleted": false
         },
         "amount": 2000,
         "status": "successful",
@@ -327,7 +316,8 @@ Query string:
     ],
     "page": 1,
     "totalPages": 1,
-    "total": 1
+    "total": 1,
+    "totalAmount": 2000
   }
 }
 ```
@@ -335,16 +325,17 @@ Query string:
 Notes on the response:
 
 - `user` contains only the fields shown above. The password is never included.
+- `totalAmount` is the sum of all of this user's donations, not just the ones on the current page. Donations to deleted (archived) campaigns are included.
 - Anonymous donations are included, with `isAnonymous: true`, because the admin chose to look up this specific user.
 - If the user has made no donations, the request still succeeds, with `"donations": []` and `"total": 0`.
 
 ### Error responses
 
-| Status | When it happens | `message` |
-|---|---|---|
-| 400 | `userId` is not a valid ID | `Invalid user ID` |
-| 401 | No token was sent | `Not authorized to access this route. No token provided.` |
-| 401 | The token is fake or expired | `Not authorized. Invalid or expired token.` |
-| 403 | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
-| 404 | No user has that ID | `User not found` |
-| 500 | Something unexpected broke on the server | `Something went wrong` |
+| Status | When it happens                           | `message`                                                                |
+| ------ | ----------------------------------------- | ------------------------------------------------------------------------ |
+| 400    | `userId` is not a valid ID                | `Invalid user ID`                                                        |
+| 401    | No token was sent                         | `Not authorized to access this route. No token provided.`                |
+| 401    | The token is fake or expired              | `Not authorized. Invalid or expired token.`                              |
+| 403    | The user is logged in but is not an admin | `Forbidden: User role 'donor' is not authorized to perform this action.` |
+| 404    | No user has that ID                       | `User not found`                                                         |
+| 500    | Something unexpected broke on the server  | `Something went wrong`                                                   |

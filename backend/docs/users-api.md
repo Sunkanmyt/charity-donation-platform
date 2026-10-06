@@ -19,7 +19,7 @@ Some 500 errors also include an `error` field with technical details.
 
 **Endpoint:** `POST /api/users/register`
 
-**Purpose:** Creates a new account with the role `donor` and logs the user in straight away by returning a token.
+**Purpose:** Creates a new account with the role `donor` and logs the user in straight away by returning a token. A verification email is sent to the address provided.
 
 **Authentication:** None. Public.
 
@@ -50,7 +50,7 @@ Some 500 errors also include an `error` field with technical details.
 ```json
 {
   "success": true,
-  "message": "Registration successful",
+  "message": "Registration successful. Please check your email to verify your account.",
   "token": "<jwt token>",
   "user": {
     "id": "64b7f0c2a1b2c3d4e5f60718",
@@ -58,10 +58,14 @@ Some 500 errors also include an `error` field with technical details.
     "lastName": "Obi",
     "email": "ada@example.com",
     "phone": "08012345678",
-    "role": "donor"
+    "role": "donor",
+    "profileImageUrl": "/default-avatar.png",
+    "isVerified": false
   }
 }
 ```
+
+New accounts start with the default avatar (`/default-avatar.png`) until a photo is uploaded through **Update my profile**.
 
 ### Error responses
 
@@ -110,7 +114,9 @@ Some 500 errors also include an `error` field with technical details.
     "lastName": "Obi",
     "email": "ada@example.com",
     "phone": "08012345678",
-    "role": "donor"
+    "role": "donor",
+    "profileImageUrl": "https://res.cloudinary.com/...",
+    "isVerified": true
   }
 }
 ```
@@ -150,11 +156,12 @@ None.
     "email": "ada@example.com",
     "phone": "08012345678",
     "role": "donor",
-    "isVerified": false,
+    "profileImageUrl": "https://res.cloudinary.com/...",
+    "isVerified": true,
     "isActive": true,
-    "lastLogin": "2026-09-21T14:07:03.713Z",
+    "lastLogin": "2026-10-06T08:00:00.000Z",
     "createdAt": "2026-09-01T10:00:00.000Z",
-    "updatedAt": "2026-09-21T14:07:03.713Z"
+    "updatedAt": "2026-10-06T08:00:00.000Z"
   }
 }
 ```
@@ -172,22 +179,24 @@ None.
 
 ## 4. Update my profile
 
-**Endpoint:** `PATCH /api/users/profile`
+**Endpoint:** `PUT /api/users/profile`
 
-**Purpose:** Changes the logged-in user's details. Send only the fields you want to change. Fields you leave out stay as they are.
+**Purpose:** Changes the logged-in user's details and/or uploads a new profile photo. Send only the fields you want to change. Fields you leave out stay as they are. A new `profileImageUrl` file replaces the old photo.
 
 **Authentication:** Required. Send `Authorization: Bearer <token>`.
 
-### Request body (JSON)
+### Request body
 
-| Field       | Type   | Required |
-| ----------- | ------ | -------- |
-| `firstName` | string | No       |
-| `lastName`  | string | No       |
-| `phone`     | string | No       |
-| `email`     | string | No       |
+Send as **`multipart/form-data`** when uploading a photo (in Postman: Body, then form-data), or as raw JSON for text-only changes.
 
-### Example request
+| Field             | Type | Required | Rules                                                                                                           |
+| ----------------- | ---- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `firstName`       | text | No       |                                                                                                                 |
+| `lastName`        | text | No       |                                                                                                                 |
+| `phone`           | text | No       |                                                                                                                 |
+| `profileImageUrl` | file | No       | An image file (JPG, JPEG, PNG or WEBP), maximum 5 MB. Stored on Cloudinary. The field must be a file, not text. |
+
+### Example request (JSON)
 
 ```json
 {
@@ -202,29 +211,30 @@ None.
   "success": true,
   "message": "Profile updated successfully",
   "user": {
-    "id": "64b7f0c2a1b2c3d4e5f60718",
+    "_id": "64b7f0c2a1b2c3d4e5f60718",
     "firstName": "Ada",
     "lastName": "Obi",
     "email": "ada@example.com",
     "phone": "08099998888",
-    "role": "donor"
+    "role": "donor",
+    "profileImageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v.../avatar.jpg"
   }
 }
 ```
 
 ### Error responses
 
-| Status | When it happens                                                                       | `message`                                                                                                |
-| ------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| 401    | No token, or the token is fake or expired                                             | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
-| 404    | The user no longer exists                                                             | `User not found`                                                                                         |
-| 500    | Something unexpected broke, for example the new email already belongs to someone else | `Failed to update profile`                                                                               |
+| Status | When it happens                                | `message`                                                                                                |
+| ------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 401    | No token, or the token is fake or expired      | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
+| 404    | The user no longer exists                      | `User not found`                                                                                         |
+| 500    | The image upload or the database update failed | `Failed to update profile`                                                                               |
 
 ---
 
 ## 5. Change my password
 
-**Endpoint:** `PATCH /api/users/password`
+**Endpoint:** `PUT /api/users/password`
 
 **Purpose:** Changes the logged-in user's password. The current password must be correct.
 
@@ -309,8 +319,9 @@ None. This is a GET request, so nothing is sent in the body.
       "email": "ada@example.com",
       "phone": "08012345678",
       "role": "donor",
+      "profileImageUrl": "/default-avatar.png",
       "isActive": true,
-      "lastLogin": "2026-09-21T14:07:03.713Z",
+      "lastLogin": "2026-10-06T08:00:00.000Z",
       "createdAt": "2026-09-01T10:00:00.000Z"
     }
   ],
@@ -325,6 +336,7 @@ Notes on the response:
 - The password and security tokens are never included.
 - `lastLogin` is missing for users who have never logged in.
 - `phone` is missing for users who didn't provide one.
+- `profileImageUrl` is `/default-avatar.png` for users who have not uploaded a photo.
 
 ### Error responses
 
