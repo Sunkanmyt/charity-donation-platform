@@ -35,22 +35,23 @@ The exception is upload errors (wrong file type or file too large), which return
 
 **Endpoint:** `GET /api/campaigns`
 
-**Purpose:** Returns campaigns, newest first, with optional category filter and title search. Results come in pages. Deleted (archived) campaigns are never included.
+**Purpose:** Returns campaigns sorted with active causes first, then newest first. Supports category filtering, status filtering, and title search. Results come in pages. Completed campaigns stay in the list but rank below active ones until an admin deletes (archives) them. Deleted campaigns are never included.
 
 **Authentication:** None. Public.
 
 ### Parameters (query string)
 
-| Parameter  | Type   | Required | Default | Rules                                                                       |
-| ---------- | ------ | -------- | ------- | --------------------------------------------------------------------------- |
-| `page`     | number | No       | `1`     | Which page to return.                                                       |
-| `limit`    | number | No       | `6`     | Campaigns per page. Minimum 1, maximum 50. Bigger values are reduced to 50. |
-| `category` | string | No       | all     | One of the four categories, spelled exactly. `All` means no filter.         |
-| `search`   | string | No       | none    | Matches part of the title, ignoring upper/lower case.                       |
+| Parameter  | Type   | Required | Default | Rules                                                                                                                                                      |
+| ---------- | ------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `page`     | number | No       | `1`     | Which page to return.                                                                                                                                      |
+| `limit`    | number | No       | `6`     | Campaigns per page. Minimum 1, maximum 50. Bigger values are reduced to 50.                                                                                |
+| `status`   | string | No       | `all`   | One of `all`, `active`, `completed` (case-insensitive). `all` returns both active and completed campaigns. Any other value matches no campaigns.           |
+| `category` | string | No       | `All`   | One of the four categories, spelled exactly. `All` (capital A) means no category filter. Any other value, including lowercase `all`, matches no campaigns. |
+| `search`   | string | No       | none    | Matches part of the title, ignoring upper/lower case.                                                                                                      |
 
 ### Example request
 
-`GET /api/campaigns?page=1&limit=6&category=Education&search=school`
+`GET /api/campaigns?page=1&limit=6&status=active&category=Education&search=school`
 
 ### Successful response: 200 OK
 
@@ -72,6 +73,8 @@ The exception is upload errors (wrong file type or file too large), which return
         "isDeleted": false,
         "createdBy": {
           "_id": "64b7f0c2a1b2c3d4e5f60700",
+          "firstName": "Grace",
+          "lastName": "Eze",
           "email": "admin@charity.org"
         },
         "createdAt": "2026-09-20T09:00:00.000Z",
@@ -87,7 +90,7 @@ The exception is upload errors (wrong file type or file too large), which return
 
 Notes:
 
-- `createdBy` currently shows only the creator's `_id` and `email`.
+- `createdBy` shows the creator's `_id`, `firstName`, `lastName` and `email`.
 - If nothing matches, the request still succeeds with `"campaigns": []` and `"totalPages": 1`.
 
 ### Error responses
@@ -134,6 +137,8 @@ Notes:
     "isDeleted": false,
     "createdBy": {
       "_id": "64b7f0c2a1b2c3d4e5f60700",
+      "firstName": "Grace",
+      "lastName": "Eze",
       "email": "admin@charity.org"
     },
     "createdAt": "2026-09-20T09:00:00.000Z",
@@ -219,7 +224,7 @@ Upload errors (wrong file type or file too large) return an HTML error page inst
 
 **Endpoint:** `PUT /api/campaigns/:id`
 
-**Purpose:** Changes a campaign. Send only the fields you want to change. Fields left out stay as they are. A new `image` file replaces the old image.
+**Purpose:** Changes a campaign. Send only the fields you want to change. Fields left out stay as they are. A new `image` file replaces the old image. A deleted (archived) campaign cannot be updated and returns 404.
 
 **Authentication:** Required. Send `Authorization: Bearer <token>`.
 
@@ -241,7 +246,7 @@ Send as `multipart/form-data` (needed if you upload an image) or as raw JSON (if
 | `status`                                           | text         | No       | `active` or `completed`.     |
 | `image`                                            | file         | No       | An image file, maximum 5 MB. |
 
-Any other field in the campaign can also be changed this way, including `raisedAmount`. Use this with care.
+Any other field in the campaign can also be changed this way, including `raisedAmount` and `isDeleted`. Use this with care.
 
 Upload errors return an HTML error page instead of the usual JSON, the same as in Create.
 
@@ -277,7 +282,7 @@ The real response returns the whole updated campaign. It is shortened here.
 | ------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | 401    | No token, or the token is fake or expired                                | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
 | 403    | Logged in but not an admin                                               | `Forbidden: User role 'donor' is not authorized to perform this action.`                                 |
-| 404    | No campaign has that ID                                                  | `Campaign not found`                                                                                     |
+| 404    | No campaign has that ID, or the campaign has been deleted                | `Campaign not found`                                                                                     |
 | 500    | The ID is not a valid format, a value breaks a rule, or the server broke | The error message from the server                                                                        |
 | 500    | The image is over 5 MB                                                   | An HTML error page (not JSON) containing `MulterError: File too large`                                   |
 | 500    | The file is not an image                                                 | An HTML error page (not JSON) containing `Only image files (jpg, jpeg, png, webp) are allowed!`          |
@@ -323,4 +328,4 @@ Note: donations made to the campaign are not deleted. They still appear in donor
 | 401    | No token, or the token is fake or expired               | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
 | 403    | Logged in but not an admin                              | `Forbidden: User role 'donor' is not authorized to perform this action.`                                 |
 | 404    | No campaign has that ID, or it has already been deleted | `Campaign not found`                                                                                     |
-| 500    | The ID is not a valid format, or the server broke       | `Failed to delete campaign`                                                                              |
+| 500    | The ID is not a valid format, or the server broke       | The error message from the server, or `Failed to delete campaign` if there is none                       |

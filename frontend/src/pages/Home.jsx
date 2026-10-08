@@ -7,10 +7,16 @@ import Pagination from '../components/Pagination';
 import ErrorBanner from '../components/ErrorBanner';
 
 const CATEGORIES = ['All', 'Education', 'Healthcare', 'Disaster Relief', 'Community Development'];
+const STATUS_TABS = [
+  { label: 'All Campaigns', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Completed', value: 'completed' },
+];
 
 export default function Home() {
   const [campaigns, setCampaigns] = useState([]);
   const [category, setCategory] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -22,10 +28,13 @@ export default function Home() {
     setError('');
     try {
       const catQuery = category !== 'All' ? `&category=${category}` : '';
+      const statusQuery = statusFilter !== 'all' ? `&status=${statusFilter}` : '';
       const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
-      const response = await api.get(`/campaigns?page=${page}&limit=6${catQuery}${searchQuery}`);
-      setCampaigns(response.data.campaigns || response.data);
-      setTotalPages(response.data.totalPages || 1);
+      const response = await api.get(`/campaigns?page=${page}&limit=6${catQuery}${statusQuery}${searchQuery}`);
+
+      const payload = response.data?.data || response.data;
+      setCampaigns(payload.campaigns || response.data.campaigns || response.data);
+      setTotalPages(payload.totalPages || response.data.totalPages || 1);
     } catch (err) {
       setError(err.message || 'Unable to load campaigns.');
     } finally {
@@ -35,12 +44,17 @@ export default function Home() {
 
   useEffect(() => {
     fetchCampaigns();
-  }, [category, page]);
+  }, [category, statusFilter, page]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setPage(1);
     fetchCampaigns();
+  };
+
+  const handleStatusChange = (status) => {
+    setStatusFilter(status);
+    setPage(1);
   };
 
   return (
@@ -68,6 +82,7 @@ export default function Home() {
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
+              type="button"
               onClick={() => { setCategory(cat); setPage(1); }}
               className={`btn ${category === cat ? 'btn-primary' : 'btn-outline'}`}
               style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
@@ -80,10 +95,24 @@ export default function Home() {
 
       <ErrorBanner message={error} onClose={() => setError('')} />
 
+      {/* Status Filter Tabs */}
+      <div className="status-tabs-container">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            className={`status-tab ${statusFilter === tab.value ? 'active' : ''}`}
+            onClick={() => handleStatusChange(tab.value)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <LoadingSkeleton count={6} />
       ) : campaigns.length === 0 ? (
-        <EmptyState title="No campaigns found" description="Try selecting another category or clear your search query." />
+        <EmptyState title="No campaigns found" description="Try selecting another status or category, or clear your search query." />
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>

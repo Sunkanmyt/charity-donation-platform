@@ -1,7 +1,7 @@
 const Campaign = require("../models/Campaign");
 const { uploadToCloudinary } = require("../config/cloudinary");
 
-// @desc    Get all campaigns (with search, category filter & pagination)
+// @desc    Get all campaigns (with search, category filter, status filter & pagination)
 // @route   GET /api/campaigns
 // @access  Public
 exports.getCampaigns = async (req, res) => {
@@ -12,6 +12,11 @@ exports.getCampaigns = async (req, res) => {
 
     // Filter out soft-deleted campaigns ($ne: true covers existing docs without the field)
     const query = { isDeleted: { $ne: true } };
+
+    // Filter by status (all, active, completed)
+    if (req.query.status && req.query.status.toLowerCase() !== "all") {
+      query.status = req.query.status.toLowerCase();
+    }
 
     // Filter by category
     if (req.query.category && req.query.category !== "All") {
@@ -24,8 +29,10 @@ exports.getCampaigns = async (req, res) => {
     }
 
     const totalCampaigns = await Campaign.countDocuments(query);
+
+    // Sort: 'active' before 'completed' alphabetically, then newest first
     const campaigns = await Campaign.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ status: 1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate("createdBy", "firstName lastName email");

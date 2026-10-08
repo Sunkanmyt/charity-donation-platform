@@ -28,12 +28,12 @@ Any logged-in user (donor or admin) can donate.
 
 ### Request body (JSON)
 
-| Field         | Type    | Required | Rules                                                                        |
-| ------------- | ------- | -------- | ---------------------------------------------------------------------------- |
-| `campaignId`  | string  | Yes      | Must be a valid ID of an existing, active campaign that has not been deleted |
-| `amount`      | number  | Yes      | Must be a number, at least 1                                                 |
-| `isAnonymous` | boolean | No       | Defaults to `false`. If `true`, the donor's name is hidden from admins.      |
-| `message`     | string  | No       | Maximum 300 characters                                                       |
+| Field         | Type    | Required | Rules                                                                                                                                                                             |
+| ------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `campaignId`  | string  | Yes      | Must be a valid ID of an existing, active campaign that has not been deleted                                                                                                      |
+| `amount`      | number  | Yes      | Must be a number, at least 1                                                                                                                                                      |
+| `isAnonymous` | boolean | No       | Defaults to `false`. If `true`, the donor's name is hidden in a campaign's donations list, including from admins. Admins can still see the donation in that user's audit history. |
+| `message`     | string  | No       | Maximum 300 characters                                                                                                                                                            |
 
 ### Parameters
 
@@ -144,13 +144,13 @@ None. This is a GET request, so nothing is sent in the body.
 }
 ```
 
-| Field in `data` | Meaning                                                          |
-| --------------- | ---------------------------------------------------------------- |
-| `donations`     | The donations on this page, newest first                         |
-| `page`          | The page number returned                                         |
-| `totalPages`    | How many pages exist in total                                    |
-| `total`         | How many donations this user has made in total                   |
-| `totalAmount`   | The lifetime sum of all this user's donations, across every page |
+| Field in `data` | Meaning                                                                     |
+| --------------- | --------------------------------------------------------------------------- |
+| `donations`     | The donations on this page, newest first                                    |
+| `page`          | The page number returned                                                    |
+| `totalPages`    | How many pages exist in total                                               |
+| `total`         | How many donations this user has made in total                              |
+| `totalAmount`   | The lifetime sum of all this user's successful donations, across every page |
 
 If the user has made no donations yet, the request still succeeds, with `"donations": []` and `"total": 0`.
 
@@ -325,7 +325,7 @@ Query string:
 Notes on the response:
 
 - `user` contains only the fields shown above. The password is never included.
-- `totalAmount` is the sum of all of this user's donations, not just the ones on the current page. Donations to deleted (archived) campaigns are included.
+- `totalAmount` is the sum of all of this user's successful donations, not just the ones on the current page. Donations to deleted (archived) campaigns are included.
 - Anonymous donations are included, with `isAnonymous: true`, because the admin chose to look up this specific user.
 - If the user has made no donations, the request still succeeds, with `"donations": []` and `"total": 0`.
 
