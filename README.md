@@ -15,10 +15,11 @@ _Technical Architecture, API Reference, and Deployment Guide_
 
 ### Public & Donor Experience
 
-- **Interactive Campaign Discovery:** Filter campaigns by active status, category, and fundraising velocity with dynamic milestone progress bars.
+- **Interactive Campaign Discovery:** Filter campaigns by active status, category, and fundraising velocity with dynamic milestone progress bars. Active causes rank above completed ones.
 - **Over-funding & Milestone Recognition:** Campaigns remain open past 100% of their target to capture real-world logistical overhead, featuring a dedicated "Campaign Goal Met" status until formally concluded by an administrator.
 - **Anonymous & Attributed Giving:** Donors can contribute custom or preset amounts with either public attribution or privacy-shielded anonymous listings.
 - **Transactional Email Receipts:** Email receipts sent through the **Brevo REST API** over HTTPS, featuring explicit transaction IDs, donor details, and Naira currency formatting. Using HTTPS instead of SMTP avoids the outbound mail-port restrictions common on cloud hosting platforms.
+- **Account Activity Emails:** A verification link on registration (valid for 24 hours), plus background notices for logins, profile updates and password changes. These never block the request that triggers them.
 - **Authenticated Donor Dashboard:** Dedicated interface displaying aggregated lifetime contributions (`totalAmount`) and personal donation histories.
 - **Profile & Avatar Management:** A settings page for updating personal details, changing passwords, and uploading a profile photo (handled by Multer and stored on Cloudinary).
 
@@ -28,7 +29,7 @@ _Technical Architecture, API Reference, and Deployment Guide_
 - **Audit-Safe Soft Deletion:** Deleting a campaign archives it (`isDeleted: true`) instead of removing it from MongoDB. Its donation records and every donor's lifetime total stay intact.
 - **Paginated User Directory:** Inspect all registered platform accounts, account activity statuses, and registration timestamps.
 - **User Contribution Audit:** On-demand inspection modals displaying complete donation ledgers per user across all campaigns.
-- **Automated Retention Filtering:** Completed campaigns are automatically phased out of public discovery 14 days after completion while remaining accessible in administrative logs.
+- **Completion-Aware Ranking:** Completed campaigns stay publicly visible but rank below active ones. Admins can archive them from the admin panel when they are no longer needed.
 
 ### Security & Session Resilience
 
@@ -95,13 +96,14 @@ charity-donation-platform/
 PORT=3000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
+TZ=Africa/Lagos
 
 # Database Connection
 MONGO_URI=mongodb+srv://<username>:<password>@cluster0.z7pbyia.mongodb.net/CharityDonationApp?retryWrites=true&w=majority
 
 # JWT Credentials
 JWT_SECRET=your_jwt_private_secret_key_here
-JWT_EXPIRE=1h
+JWT_EXPIRES_IN=1h
 
 # Cloudinary Storage
 CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -114,6 +116,8 @@ EMAIL_USER=your_verified_sender@example.com
 ```
 
 `EMAIL_USER` must be a sender address that has been verified in your Brevo account.
+
+`TZ` sets the server timezone (`Africa/Lagos` is WAT, UTC+1). Cloud platforms and containers default to UTC, so without it the timestamps in transactional emails such as donation receipts and login alerts would be an hour off local time.
 
 ### Frontend Configuration (`frontend/.env`)
 
@@ -178,13 +182,13 @@ Full request and response details for each group are in `users-api.md`, `campaig
 
 ### Campaign Management Routes (`/api/campaigns`)
 
-| Method | Route                | Access | Description                                                            |
-| ------ | -------------------- | ------ | ---------------------------------------------------------------------- |
-| GET    | `/api/campaigns`     | Public | Get active and recently completed causes                               |
-| GET    | `/api/campaigns/:id` | Public | Retrieve full details for a single campaign                            |
-| POST   | `/api/campaigns`     | Admin  | Create a new campaign with banner upload                               |
-| PUT    | `/api/campaigns/:id` | Admin  | Update campaign text, target amount, or status                         |
-| DELETE | `/api/campaigns/:id` | Admin  | Soft-delete (archive) a campaign while preserving its donation records |
+| Method | Route                | Access | Description                                                                                |
+| ------ | -------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| GET    | `/api/campaigns`     | Public | List campaigns with optional search, category, and status filters (all, active, completed) |
+| GET    | `/api/campaigns/:id` | Public | Retrieve full details for a single campaign                                                |
+| POST   | `/api/campaigns`     | Admin  | Create a new campaign with banner upload                                                   |
+| PUT    | `/api/campaigns/:id` | Admin  | Update campaign text, target amount, or status                                             |
+| DELETE | `/api/campaigns/:id` | Admin  | Soft-delete (archive) a campaign while preserving its donation records                     |
 
 ### Donation & Transaction Routes (`/api/donations`)
 
@@ -201,13 +205,15 @@ Full request and response details for each group are in `users-api.md`, `campaig
 
 ### Users Collection (`User.js`)
 
-- `firstName`, `lastName` (String, Required)
-- `email` (String, Required, Unique, Indexed)
-- `password` (String, Required, Hashed via bcrypt)
-- `phone` (String, Optional)
+- `firstName`, `lastName` (String, Required, Trimmed)
+- `email` (String, Required, Unique, Indexed, Lowercase, Trimmed)
+- `password` (String, Required, Min 6, Hashed via bcrypt, excluded from queries by default)
+- `phone` (String, Optional, Trimmed)
 - `profileImageUrl` (String, Default: `'/default-avatar.png'`, Cloudinary URI once uploaded)
 - `role` (String, Enum: `['donor', 'admin']`, Default: `'donor'`)
 - `isVerified` (Boolean, Default: `false`)
+- `verificationTokenHash` (String, SHA-256 hash of the emailed token, cleared once verified)
+- `verificationTokenExpires` (Date, 24 hours after registration, cleared once verified)
 - `isActive` (Boolean, Default: `true`)
 - `lastLogin` (Date, Optional)
 - `timestamps` (`createdAt`, `updatedAt`)
@@ -217,24 +223,23 @@ Full request and response details for each group are in `users-api.md`, `campaig
 - `title` (String, Required, Trimmed, Max 120 characters)
 - `category` (String, Required, Enum: `['Education', 'Healthcare', 'Disaster Relief', 'Community Development']`)
 - `targetAmount` (Number, Required, Min 10)
-- `raisedAmount` (Number, Default: `0`)
+- `raisedAmount` (Number, Default: `0`, Min 0)
 - `description` (String, Required)
 - `imageUrl` (String, Cloudinary URI, defaults to a placeholder image)
 - `status` (String, Enum: `['active', 'completed']`, Default: `'active'`)
-- `completedAt` (Date, Default: `null`, Populated on completion)
 - `isDeleted` (Boolean, Default: `false`, Indexed)
 - `deletedAt` (Date, Default: `null`, Populated when archived)
-- `createdBy` (ObjectId, Reference: `User`)
+- `createdBy` (ObjectId, Reference: `User`, Required)
 - `timestamps` (`createdAt`, `updatedAt`)
 
 ### Donations Collection (`Donation.js`)
 
-- `campaign` (ObjectId, Reference: `Campaign`, Required, Indexed)
-- `donor` (ObjectId, Reference: `User`, Required, Indexed)
+- `campaign` (ObjectId, Reference: `Campaign`, Required)
+- `donor` (ObjectId, Reference: `User`, Required)
 - `amount` (Number, Required, Min 1)
 - `message` (String, Optional, Max 300 characters)
 - `isAnonymous` (Boolean, Default: `false`)
-- `status` (String, Default: `'successful'`)
+- `status` (String, Enum: `['pending', 'successful', 'failed']`, Default: `'successful'`)
 - `timestamps` (`createdAt`, `updatedAt`)
 
 ---
@@ -267,7 +272,7 @@ User Logs In ──► Client records token exp claim via jwt-decode
 Client submits POST /api/donations
           │
           ▼
-Database transaction:
+Database writes:
   1. Save Donation record
   2. Increment Campaign.raisedAmount via $inc
           │
@@ -305,7 +310,7 @@ Updated user returned; AuthContext syncs the new avatar in the UI
 
 ### Testing Inactive Session Expiry
 
-1. In `backend/.env`, set `JWT_EXPIRE=2m`.
+1. In `backend/.env`, set `JWT_EXPIRES_IN=2m`.
 2. In `frontend/src/context/AuthContext.jsx`, set `ACTIVE_WINDOW = 10 * 1000`.
 3. Log into the application and leave the browser unattended for 60 seconds.
 4. Verify the client auto-logs out and redirects to `/login` without console errors.

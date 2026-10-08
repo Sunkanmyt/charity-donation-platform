@@ -274,6 +274,41 @@ a {
   white-space: nowrap;
 }
 
+/* STATUS FILTER TABS */
+.status-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.status-tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.status-tab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.status-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
 /* RESPONSIVE BREAKPOINTS */
 @media (max-width: 768px) {
   .container {
@@ -338,5 +373,14 @@ a {
   .pagination-info {
     font-size: 0.825rem;
     padding: 0 0.25rem;
+  }
+
+  .status-tabs-container {
+    gap: 0.35rem;
+  }
+
+  .status-tab {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8rem;
   }
 }

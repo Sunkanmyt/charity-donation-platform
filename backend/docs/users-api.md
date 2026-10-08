@@ -19,7 +19,7 @@ Some 500 errors also include an `error` field with technical details.
 
 **Endpoint:** `POST /api/users/register`
 
-**Purpose:** Creates a new account with the role `donor` and logs the user in straight away by returning a token. A verification email is sent to the address provided.
+**Purpose:** Creates a new account with the role `donor` and logs the user in straight away by returning a token. A verification email is sent to the address provided. The verification link is valid for 24 hours. Any `role` sent in the request is ignored, so new accounts are always `donor`. The email is sent in the background, so a failure to send it does not affect the registration.
 
 **Authentication:** None. Public.
 
@@ -77,7 +77,49 @@ New accounts start with the default avatar (`/default-avatar.png`) until a photo
 
 ---
 
-## 2. Login
+## 2. Verify email
+
+**Endpoint:** `GET /api/users/verify/:token`
+
+**Purpose:** Confirms a user's email address using the link sent in the verification email. On success the account is marked `isVerified: true`. The token is valid for 24 hours after registration and can be used only once.
+
+**Authentication:** None. Public.
+
+### Parameters (URL)
+
+| Parameter | Type   | Required | Rules                                       |
+| --------- | ------ | -------- | ------------------------------------------- |
+| `token`   | string | Yes      | The verification token from the email link. |
+
+### Example request
+
+`GET /api/users/verify/<token from the email>`
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Email successfully verified! You can now log in."
+}
+```
+
+Notes:
+
+- The token is stored only as a SHA-256 hash and is removed once the email is verified, so a second attempt with the same link returns 400.
+- Verification is not required to log in. Unverified accounts can still log in.
+- There is no endpoint to resend the verification email.
+
+### Error responses
+
+| Status | When it happens                                          | `message`                                       |
+| ------ | -------------------------------------------------------- | ----------------------------------------------- |
+| 400    | The token is wrong, already used, or older than 24 hours | `Verification token is invalid or has expired.` |
+| 500    | Something unexpected broke on the server                 | The error message from the server               |
+
+---
+
+## 3. Login
 
 **Endpoint:** `POST /api/users/login`
 
@@ -121,6 +163,8 @@ New accounts start with the default avatar (`/default-avatar.png`) until a photo
 }
 ```
 
+A login alert email is sent to the user in the background after each successful login. A failure to send it does not affect the login. Logging in does not require a verified email address: `isVerified` only reports the status.
+
 ### Error responses
 
 | Status | When it happens                          | `message`                           |
@@ -132,7 +176,7 @@ New accounts start with the default avatar (`/default-avatar.png`) until a photo
 
 ---
 
-## 3. View my profile
+## 4. View my profile
 
 **Endpoint:** `GET /api/users/profile`
 
@@ -177,11 +221,11 @@ None.
 
 ---
 
-## 4. Update my profile
+## 5. Update my profile
 
 **Endpoint:** `PUT /api/users/profile`
 
-**Purpose:** Changes the logged-in user's details and/or uploads a new profile photo. Send only the fields you want to change. Fields you leave out stay as they are. A new `profileImageUrl` file replaces the old photo.
+**Purpose:** Changes the logged-in user's details and/or uploads a new profile photo. Send only the fields you want to change. Fields you leave out stay as they are. A new `profileImageUrl` file replaces the old photo. A confirmation email is sent to the user in the background.
 
 **Authentication:** Required. Send `Authorization: Bearer <token>`.
 
@@ -195,6 +239,8 @@ Send as **`multipart/form-data`** when uploading a photo (in Postman: Body, then
 | `lastName`        | text | No       |                                                                                                                 |
 | `phone`           | text | No       |                                                                                                                 |
 | `profileImageUrl` | file | No       | An image file (JPG, JPEG, PNG or WEBP), maximum 5 MB. Stored on Cloudinary. The field must be a file, not text. |
+
+The email address cannot be changed here. An `email` field in the request is ignored.
 
 ### Example request (JSON)
 
@@ -211,13 +257,14 @@ Send as **`multipart/form-data`** when uploading a photo (in Postman: Body, then
   "success": true,
   "message": "Profile updated successfully",
   "user": {
-    "_id": "64b7f0c2a1b2c3d4e5f60718",
+    "id": "64b7f0c2a1b2c3d4e5f60718",
     "firstName": "Ada",
     "lastName": "Obi",
     "email": "ada@example.com",
     "phone": "08099998888",
     "role": "donor",
-    "profileImageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v.../avatar.jpg"
+    "profileImageUrl": "https://res.cloudinary.com/your-cloud/image/upload/v.../avatar.jpg",
+    "isVerified": true
   }
 }
 ```
@@ -228,15 +275,15 @@ Send as **`multipart/form-data`** when uploading a photo (in Postman: Body, then
 | ------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | 401    | No token, or the token is fake or expired      | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
 | 404    | The user no longer exists                      | `User not found`                                                                                         |
-| 500    | The image upload or the database update failed | `Failed to update profile`                                                                               |
+| 500    | The image upload or the database update failed | The error message from the server, or `Failed to update profile` if there is none                        |
 
 ---
 
-## 5. Change my password
+## 6. Change my password
 
 **Endpoint:** `PUT /api/users/password`
 
-**Purpose:** Changes the logged-in user's password. The current password must be correct.
+**Purpose:** Changes the logged-in user's password. The current password must be correct. A notice email is sent to the user in the background.
 
 **Authentication:** Required. Send `Authorization: Bearer <token>`.
 
@@ -274,11 +321,52 @@ Send as **`multipart/form-data`** when uploading a photo (in Postman: Body, then
 | 401    | No token, or the token is fake or expired     | `Not authorized to access this route. No token provided.` or `Not authorized. Invalid or expired token.` |
 | 401    | The current password is wrong                 | `Current password is incorrect`                                                                          |
 | 404    | The user no longer exists                     | `User not found`                                                                                         |
-| 500    | Something unexpected broke on the server      | `Failed to change password`                                                                              |
+| 500    | Something unexpected broke on the server      | The error message from the server, or `Failed to change password` if there is none                       |
 
 ---
 
-## 6. View all users (admin only)
+## 7. Refresh my token
+
+**Endpoint:** `POST /api/users/refresh`
+
+**Purpose:** Issues a new token for the logged-in user so the session can continue without logging in again. The web app calls this about 60 seconds before the current token expires, and only if the user has been active in the last 5 minutes. The new token expires after 1 hour, like a login token.
+
+**Authentication:** Required. Send `Authorization: Bearer <token>`. The current token must still be valid. An expired token returns 401 and the user has to log in again.
+
+### Request body
+
+None.
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "token": "<new jwt token>",
+  "user": {
+    "_id": "64b7f0c2a1b2c3d4e5f60718",
+    "firstName": "Ada",
+    "lastName": "Obi",
+    "email": "ada@example.com",
+    "role": "donor"
+  }
+}
+```
+
+The `user` object here is shorter than the one returned by login. It has no `phone`, `profileImageUrl` or `isVerified`, and it uses `_id` instead of `id`. Clients should keep the user data they already have and only replace the token.
+
+### Error responses
+
+| Status | When it happens                          | `message`                                                 |
+| ------ | ---------------------------------------- | --------------------------------------------------------- |
+| 401    | No token was sent                        | `Not authorized to access this route. No token provided.` |
+| 401    | The token is fake or expired             | `Not authorized. Invalid or expired token.`               |
+| 500    | Something unexpected broke on the server | `Failed to refresh authentication token`                  |
+
+---
+
+## 8. View all users (admin only)
 
 **Endpoint:** `GET /api/users`
 
@@ -319,7 +407,6 @@ None. This is a GET request, so nothing is sent in the body.
       "email": "ada@example.com",
       "phone": "08012345678",
       "role": "donor",
-      "profileImageUrl": "/default-avatar.png",
       "isActive": true,
       "lastLogin": "2026-10-06T08:00:00.000Z",
       "createdAt": "2026-09-01T10:00:00.000Z"
@@ -336,7 +423,7 @@ Notes on the response:
 - The password and security tokens are never included.
 - `lastLogin` is missing for users who have never logged in.
 - `phone` is missing for users who didn't provide one.
-- `profileImageUrl` is `/default-avatar.png` for users who have not uploaded a photo.
+- `profileImageUrl` and `isVerified` are not included in this list.
 
 ### Error responses
 
