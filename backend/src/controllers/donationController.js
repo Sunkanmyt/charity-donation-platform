@@ -11,6 +11,15 @@ exports.createDonation = async (req, res) => {
   try {
     const { campaignId, amount, isAnonymous, message } = req.body;
 
+    // 1. Verify User Verification Status
+    if (!req.user.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your email address before making a donation.",
+        data: null,
+      });
+    }
+
     if (!campaignId || !mongoose.Types.ObjectId.isValid(campaignId)) {
       return res.status(400).json({
         success: false,

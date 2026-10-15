@@ -18,8 +18,9 @@ _Technical Architecture, API Reference, and Deployment Guide_
 - **Interactive Campaign Discovery:** Filter campaigns by active status, category, and fundraising velocity with dynamic milestone progress bars. Active causes rank above completed ones.
 - **Over-funding & Milestone Recognition:** Campaigns remain open past 100% of their target to capture real-world logistical overhead, featuring a dedicated "Campaign Goal Met" status until formally concluded by an administrator.
 - **Anonymous & Attributed Giving:** Donors can contribute custom or preset amounts with either public attribution or privacy-shielded anonymous listings.
+- **Verified Donor Giving:** Donations require a verified email address (`isVerified: true`). Unverified users can log in and browse, but receive a 403 when they try to donate.
 - **Transactional Email Receipts:** Email receipts sent through the **Brevo REST API** over HTTPS, featuring explicit transaction IDs, donor details, and Naira currency formatting. Using HTTPS instead of SMTP avoids the outbound mail-port restrictions common on cloud hosting platforms.
-- **Account Activity Emails:** A verification link on registration (valid for 24 hours), plus background notices for logins, profile updates and password changes. These never block the request that triggers them.
+- **Account Activity Emails:** A verification link on registration (valid for 24 hours, and can be re-sent), plus background notices for logins, profile updates and password changes. These never block the request that triggers them.
 - **Authenticated Donor Dashboard:** Dedicated interface displaying aggregated lifetime contributions (`totalAmount`) and personal donation histories.
 - **Profile & Avatar Management:** A settings page for updating personal details, changing passwords, and uploading a profile photo (handled by Multer and stored on Cloudinary).
 
@@ -169,16 +170,17 @@ Full request and response details for each group are in `users-api.md`, `campaig
 
 ### User & Authentication Routes (`/api/users`)
 
-| Method | Route                      | Access  | Description                                                           |
-| ------ | -------------------------- | ------- | --------------------------------------------------------------------- |
-| POST   | `/api/users/register`      | Public  | Register a new donor account; sends verification email                |
-| GET    | `/api/users/verify/:token` | Public  | Verify email address via single-use SHA-256 token                     |
-| POST   | `/api/users/login`         | Public  | Authenticate credentials and return signed JWT                        |
-| GET    | `/api/users/profile`       | Private | Retrieve authenticated user profile and verification status           |
-| PUT    | `/api/users/profile`       | Private | Update account details (firstName, lastName, phone) and upload avatar |
-| PUT    | `/api/users/password`      | Private | Update user password                                                  |
-| POST   | `/api/users/refresh`       | Private | Proactively renew expiring JWT session (sliding window)               |
-| GET    | `/api/users`               | Admin   | Retrieve paginated system user directory                              |
+| Method | Route                            | Access  | Description                                                           |
+| ------ | -------------------------------- | ------- | --------------------------------------------------------------------- |
+| POST   | `/api/users/register`            | Public  | Register a new donor account; sends verification email                |
+| GET    | `/api/users/verify/:token`       | Public  | Verify email address via single-use SHA-256 token                     |
+| POST   | `/api/users/resend-verification` | Public  | Resend the email verification link with a fresh 24-hour token         |
+| POST   | `/api/users/login`               | Public  | Authenticate credentials and return signed JWT                        |
+| GET    | `/api/users/profile`             | Private | Retrieve authenticated user profile and verification status           |
+| PUT    | `/api/users/profile`             | Private | Update account details (firstName, lastName, phone) and upload avatar |
+| PUT    | `/api/users/password`            | Private | Update user password                                                  |
+| POST   | `/api/users/refresh`             | Private | Proactively renew expiring JWT session (sliding window)               |
+| GET    | `/api/users`                     | Admin   | Retrieve paginated system user directory                              |
 
 ### Campaign Management Routes (`/api/campaigns`)
 
@@ -192,12 +194,12 @@ Full request and response details for each group are in `users-api.md`, `campaig
 
 ### Donation & Transaction Routes (`/api/donations`)
 
-| Method | Route                                 | Access  | Description                                                  |
-| ------ | ------------------------------------- | ------- | ------------------------------------------------------------ |
-| POST   | `/api/donations`                      | Private | Process donation, increment total, and trigger receipt       |
-| GET    | `/api/donations/my`                   | Private | Get authenticated user's donation history and lifetime total |
-| GET    | `/api/donations/campaign/:campaignId` | Private | Retrieve supporters/donations for a cause                    |
-| GET    | `/api/donations/user/:userId`         | Admin   | Get full donation audit ledger for a specific user           |
+| Method | Route                                 | Access             | Description                                                  |
+| ------ | ------------------------------------- | ------------------ | ------------------------------------------------------------ |
+| POST   | `/api/donations`                      | Private (verified) | Process donation, increment total, and trigger receipt       |
+| GET    | `/api/donations/my`                   | Private            | Get authenticated user's donation history and lifetime total |
+| GET    | `/api/donations/campaign/:campaignId` | Private            | Retrieve supporters/donations for a cause                    |
+| GET    | `/api/donations/user/:userId`         | Admin              | Get full donation audit ledger for a specific user           |
 
 ---
 
@@ -272,9 +274,11 @@ User Logs In ──► Client records token exp claim via jwt-decode
 Client submits POST /api/donations
           │
           ▼
-Database writes:
-  1. Save Donation record
-  2. Increment Campaign.raisedAmount via $inc
+Guard check: is the user's email verified?
+  ├── NO  ──► Return HTTP 403 Forbidden
+  └── YES ──► Continue to database writes:
+                1. Save Donation record
+                2. Increment Campaign.raisedAmount via $inc
           │
           ▼
 Isolate email dispatcher in try/catch block:

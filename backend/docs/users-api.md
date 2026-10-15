@@ -107,8 +107,8 @@ New accounts start with the default avatar (`/default-avatar.png`) until a photo
 Notes:
 
 - The token is stored only as a SHA-256 hash and is removed once the email is verified, so a second attempt with the same link returns 400.
-- Verification is not required to log in. Unverified accounts can still log in.
-- There is no endpoint to resend the verification email.
+- Verification is not required to log in. Unverified accounts can log in and update their profile, but cannot make donations until the email is verified.
+- If the link has expired or the email is lost, request a new one with `POST /api/users/resend-verification`.
 
 ### Error responses
 
@@ -119,7 +119,49 @@ Notes:
 
 ---
 
-## 3. Login
+## 3. Resend verification email
+
+**Endpoint:** `POST /api/users/resend-verification`
+
+**Purpose:** Sends a new verification email to an account that has not been verified yet. A fresh token is generated and the 24-hour validity window starts again. Any earlier verification link stops working. If the email is unknown or the account is already verified, nothing is sent, but the response is the same.
+
+**Authentication:** None. Public.
+
+### Request body (JSON)
+
+| Field   | Type   | Required | Rules                                                  |
+| ------- | ------ | -------- | ------------------------------------------------------ |
+| `email` | string | Yes      | The registered email address of an unverified account. |
+
+### Example request
+
+```json
+{
+  "email": "ada@example.com"
+}
+```
+
+### Successful response: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "If an unverified account exists for this email address, a verification link has been sent."
+}
+```
+
+Note: to prevent account enumeration, this endpoint returns `200 OK` with exactly the same body whether the email is registered, not registered, or already verified.
+
+### Error responses
+
+| Status | When it happens                          | `message`                             |
+| ------ | ---------------------------------------- | ------------------------------------- |
+| 400    | The email field is missing or empty      | `Email address is required`           |
+| 500    | Something unexpected broke on the server | `Failed to resend verification email` |
+
+---
+
+## 4. Login
 
 **Endpoint:** `POST /api/users/login`
 
@@ -163,7 +205,7 @@ Notes:
 }
 ```
 
-A login alert email is sent to the user in the background after each successful login. A failure to send it does not affect the login. Logging in does not require a verified email address: `isVerified` only reports the status.
+A login alert email is sent to the user in the background after each successful login. A failure to send it does not affect the login. Logging in does not require a verified email address, but donating does (see `POST /api/donations`).
 
 ### Error responses
 
@@ -176,7 +218,7 @@ A login alert email is sent to the user in the background after each successful 
 
 ---
 
-## 4. View my profile
+## 5. View my profile
 
 **Endpoint:** `GET /api/users/profile`
 
@@ -221,7 +263,7 @@ None.
 
 ---
 
-## 5. Update my profile
+## 6. Update my profile
 
 **Endpoint:** `PUT /api/users/profile`
 
@@ -279,7 +321,7 @@ The email address cannot be changed here. An `email` field in the request is ign
 
 ---
 
-## 6. Change my password
+## 7. Change my password
 
 **Endpoint:** `PUT /api/users/password`
 
@@ -325,7 +367,7 @@ The email address cannot be changed here. An `email` field in the request is ign
 
 ---
 
-## 7. Refresh my token
+## 8. Refresh my token
 
 **Endpoint:** `POST /api/users/refresh`
 
@@ -366,7 +408,7 @@ The `user` object here is shorter than the one returned by login. It has no `pho
 
 ---
 
-## 8. View all users (admin only)
+## 9. View all users (admin only)
 
 **Endpoint:** `GET /api/users`
 

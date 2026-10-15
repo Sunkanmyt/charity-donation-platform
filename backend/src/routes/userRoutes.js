@@ -5,6 +5,7 @@ const {
   getProfile,
   registerUser,
   verifyEmail,
+  resendVerificationEmail,
   loginUser,
   updateProfile,
   changePassword,
@@ -19,6 +20,7 @@ const upload = require("../middlewares/upload");
 // Public routes
 router.post("/register", registerUser);
 router.get("/verify/:token", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
 router.post("/login", loginUser);
 
 // Protected routes

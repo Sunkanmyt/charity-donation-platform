@@ -136,6 +136,61 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
+// @desc    Resend verification email
+// @route   POST /api/users/resend-verification
+// @access  Public (works for logged-in or logged-out users)
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const email = (req.body.email || req.user?.email || "")
+      .toLowerCase()
+      .trim();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email address is required",
+      });
+    }
+
+    const genericSuccess = {
+      success: true,
+      message:
+        "If an unverified account exists for this email, a verification link has been sent.",
+    };
+
+    const user = await User.findOne({ email });
+
+    // Silently return early if user does not exist or is already verified
+    if (!user || user.isVerified) {
+      return res.status(200).json(genericSuccess);
+    }
+
+    // Generate fresh 32-byte token and SHA-256 hash
+    const verificationToken = generateVerificationToken();
+    user.verificationTokenHash = crypto
+      .createHash("sha256")
+      .update(verificationToken)
+      .digest("hex");
+    user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await user.save();
+
+    // Non-blocking email dispatch
+    emailService
+      .sendVerificationEmail(user, verificationToken)
+      .catch((emailError) => {
+        console.error("Failed to send verification email:", emailError.message);
+      });
+
+    res.status(200).json(genericSuccess);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to process verification request",
+    });
+  }
+};
+
 // @desc    Authenticate user & return JWT token
 // @route   POST /api/users/login
 // @access  Public

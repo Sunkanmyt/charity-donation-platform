@@ -24,7 +24,7 @@ Every error uses the same shape:
 
 `Authorization: Bearer <token>`
 
-Any logged-in user (donor or admin) can donate.
+Any logged-in user (donor or admin) with a verified email address (`isVerified: true`) can donate. Unverified users receive a 403 error.
 
 ### Request body (JSON)
 
@@ -72,16 +72,17 @@ None. This endpoint has no URL parameters or query strings.
 
 ### Error responses
 
-| Status | When it happens                                           | `message`                                                 |
-| ------ | --------------------------------------------------------- | --------------------------------------------------------- |
-| 400    | `campaignId` is missing or not a valid ID                 | `A valid campaign ID is required`                         |
-| 400    | `amount` is missing, not a number, or below 1             | `Amount must be at least 1`                               |
-| 400    | `message` is not text, or is longer than 300 characters   | `Message must be text of 300 characters or fewer`         |
-| 400    | The campaign exists but is not active                     | `This campaign is not accepting donations`                |
-| 401    | No token was sent                                         | `Not authorized to access this route. No token provided.` |
-| 401    | The token is fake or expired                              | `Not authorized. Invalid or expired token.`               |
-| 404    | No campaign has that ID, or the campaign has been deleted | `Campaign not found`                                      |
-| 500    | Something unexpected broke on the server                  | `Something went wrong`                                    |
+| Status | When it happens                                                     | `message`                                                    |
+| ------ | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 400    | `campaignId` is missing or not a valid ID                           | `A valid campaign ID is required`                            |
+| 400    | `amount` is missing, not a number, or below 1                       | `Amount must be at least 1`                                  |
+| 400    | `message` is not text, or is longer than 300 characters             | `Message must be text of 300 characters or fewer`            |
+| 400    | The campaign exists but is not active                               | `This campaign is not accepting donations`                   |
+| 401    | No token was sent                                                   | `Not authorized to access this route. No token provided.`    |
+| 401    | The token is fake or expired                                        | `Not authorized. Invalid or expired token.`                  |
+| 403    | The user has not verified their email address (`isVerified: false`) | `Please verify your email address before making a donation.` |
+| 404    | No campaign has that ID, or the campaign has been deleted           | `Campaign not found`                                         |
+| 500    | Something unexpected broke on the server                            | `Something went wrong`                                       |
 
 ---
 
