@@ -3,7 +3,7 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProfilePage() {
-  const { user, setUser} = useAuth();
+  const { user, setUser } = useAuth();
   const fileInputRef = useRef(null);
 
   // Profile Form State
@@ -13,6 +13,7 @@ export default function ProfilePage() {
     email: "",
     phone: "",
     profileImageUrl: "",
+    isVerified: false,
   });
 
   // Password Form State
@@ -27,6 +28,8 @@ export default function ProfilePage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [profileMessage, setProfileMessage] = useState({ type: "", text: "" });
   const [passwordMessage, setPasswordMessage] = useState({ type: "", text: "" });
 
@@ -42,6 +45,7 @@ export default function ProfilePage() {
             email: u.email || "",
             phone: u.phone || "",
             profileImageUrl: u.profileImageUrl || "",
+            isVerified: Boolean(u.isVerified),
           });
           return;
         }
@@ -56,6 +60,7 @@ export default function ProfilePage() {
           email: user.email || "",
           phone: user.phone || "",
           profileImageUrl: user.profileImageUrl || "",
+          isVerified: Boolean(user.isVerified),
         });
       }
     };
@@ -63,11 +68,41 @@ export default function ProfilePage() {
     loadUserData();
   }, [user]);
 
+  // Resend Verification Cooldown Timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    try {
+      await api.post("/users/resend-verification", {
+        email: formData.email,
+      });
+      setProfileMessage({
+        type: "success",
+        text: "Verification link resent to your email.",
+      });
+      setResendCooldown(60);
+    } catch (err) {
+      setProfileMessage({
+        type: "error",
+        text: err.response?.data?.message || "Failed to resend verification email.",
+      });
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -99,12 +134,13 @@ export default function ProfilePage() {
           lastName: updatedUser.lastName || prev.lastName,
           phone: updatedUser.phone || prev.phone,
           profileImageUrl: updatedUser.profileImageUrl || prev.profileImageUrl,
+          isVerified: updatedUser.isVerified !== undefined ? updatedUser.isVerified : prev.isVerified,
         }));
 
-        // Update global AuthContext state so Navbar updates instantly
+        // Update global AuthContext state so Navbar and modal update instantly
         setUser((prev) => ({
           ...prev,
-          ...updatedUser
+          ...updatedUser,
         }));
       }
 
@@ -194,6 +230,8 @@ export default function ProfilePage() {
     color: "var(--text-muted)",
   };
 
+  const isUserVerified = formData.isVerified || Boolean(user?.isVerified);
+
   return (
     <div className="container" style={{ maxWidth: "960px", margin: "2rem auto" }}>
       {/* Page Header */}
@@ -243,7 +281,7 @@ export default function ProfilePage() {
               <img
                 src={
                   imagePreview ||
-                  formData.profileImageUrl || 
+                  formData.profileImageUrl ||
                   "/default-avatar.png"
                 }
                 alt="Profile Avatar"
@@ -276,6 +314,72 @@ export default function ProfilePage() {
                   JPG, PNG, or WEBP (Max 5MB)
                 </p>
               </div>
+            </div>
+
+            {/* Verified Status Banner */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0.75rem 1rem",
+                background: "var(--bg-main)",
+                borderRadius: "6px",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <div>
+                <span style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)" }}>
+                  Account Verification
+                </span>
+                {!isUserVerified && (
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    Verification required to donate
+                  </span>
+                )}
+              </div>
+              {isUserVerified ? (
+                <span
+                  className="badge badge-active"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Verified
+                </span>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span
+                    className="badge"
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      border: "1px solid #fde68a",
+                    }}
+                  >
+                    ● Pending Verification
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading || resendCooldown > 0}
+                    className="btn btn-outline"
+                    style={{
+                      padding: "0.25rem 0.65rem",
+                      fontSize: "0.75rem",
+                      borderRadius: "4px",
+                      height: "auto",
+                    }}
+                  >
+                    {resendLoading
+                      ? "Sending..."
+                      : resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : "Resend Link"}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
@@ -388,7 +492,7 @@ export default function ProfilePage() {
                   setPasswordData({ ...passwordData, newPassword: e.target.value })
                 }
                 required
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 style={inputStyle}
               />
             </div>
